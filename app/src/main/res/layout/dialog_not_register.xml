@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:background="@color/white"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:background="@color/white"
+        android:layout_alignParentRight="true"
+        android:src="@drawable/ic_dia_logo"
+        android:layout_width="200dp"
+        android:layout_height="200dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+
+        <TextView
+            android:id="@+id/txt_dia_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@color/dialog_color_head"
+            android:padding="10dp"
+            android:text="Media Player Registration"
+            android:textColor="@color/white"
+            android:textSize="16dp"
+            android:textStyle="bold" />
+
+
+        <TextView
+            android:id="@+id/text_dia_desc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginTop="10dp"
+            android:text="This media player is not registered to the \nL Squared Hub."
+            android:textColor="@color/black"
+            android:textSize="14dp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginBottom="20dp"
+            android:text="You can log into the L Squared Hub through your desktop browser and add this device using the following device ID:"
+            android:textColor="@color/black"
+            android:textSize="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@color/dialog_color_col1"
+                android:paddingHorizontal="15dp"
+                android:paddingVertical="6dp"
+                android:textColor="@color/black"
+                android:text="Device ID : " />
+
+            <TextView
+                android:id="@+id/tv_dialog_deviceid"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:textColor="@color/black"
+                android:layout_weight="1"
+                android:background="@color/dialog_color_col2"
+                android:paddingHorizontal="15dp"
+                android:paddingVertical="5dp"
+                android:text="32gb2iyt2732862iugej2gi2e"
+                android:textSize="16dp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_dialog_detail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@color/color_grey"
+            android:padding="10dp"
+            android:text="For help with setup. please email support@LSquared.com or call us at 1-877-344-1548 and select option 2 for customer service."
+            android:textColor="@color/black"
+            android:textSize="10dp" />
+
+
+    </LinearLayout>
+
+</RelativeLayout>
