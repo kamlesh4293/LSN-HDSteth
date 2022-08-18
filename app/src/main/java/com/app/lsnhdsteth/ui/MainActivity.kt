@@ -407,9 +407,9 @@ class MainActivity : AppCompatActivity() {
         connectionLiveData.observe(this, Observer { isInternet ->
             viewModel.internet = isInternet
                 internetOffON(isInternet)
-//            if(from_internet) {
-//                refreshPage(Constant.REFRESH_FROM_CHANGE_INTERNET)
-//            }
+            if(from_internet) {
+                refreshPage(Constant.REFRESH_FROM_CHANGE_INTERNET)
+            }
         })
 
 
@@ -763,6 +763,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun nextPlay(pos:Int){
+
+
         var c_size = current_size_list[pos]
         var m_size = multiframe_items.get(pos).size
 
@@ -798,6 +800,10 @@ class MainActivity : AppCompatActivity() {
 
     // load image
     private fun loadImage(pos:Int) {
+
+        if(File("/storage/emulated/0/Android/data/com.app.lsnhdsteth/files/LSN-HDSteth/1552642904.2248-driving-shot-of-happy-female-friends-listening-music-and-paying-currency-while-traveling-in-taxi.mp4").exists()){
+            Log.d(TAG, "loadImage: Video File Available")
+        }else Log.d(TAG, "loadImage: Video File Not Available")
 
         binding.rlBackground.visibility = View.GONE
         layout_list[pos].imageView?.visibility = View.VISIBLE
@@ -861,18 +867,21 @@ class MainActivity : AppCompatActivity() {
         val path = DataManager.getDirectory()+File.separator+ file
         Log.d("file_path- ", path)
 
+        if(Utility.isFileCompleteDownloadedForPlay(file,multiframe_items[pos].get(current_size_list[pos]).filesize,this)){
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
-            var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
-            layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
-        }else{
-            try {
-                layout_list[pos].myMediaMetadataRetriever!!.setDataSource(path, HashMap())
-            }catch (e :RuntimeException ){
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
                 var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
                 layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
-                e.printStackTrace();
+            }else{
+                try {
+                    layout_list[pos].myMediaMetadataRetriever!!.setDataSource(path, HashMap())
+                }catch (e :RuntimeException ){
+                    var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
+                    layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
+                    e.printStackTrace();
+                }
             }
+
         }
 
 
@@ -1042,10 +1051,12 @@ class MainActivity : AppCompatActivity() {
 
     fun refreshPage(from: String) {
         if(from.equals(Constant.REFRESH_FROM_CHANGE_INTERNET))pref?.putBooleanData(MySharePrefernce.KEY_REFRESH_INTERNET,false)
-        if(from.equals(Constant.REFRESH_FROM_NODEVICE) && dialog==null){
-            pref?.setDataRefresh(from)
-            finish()
-            startActivity(Intent(this,ContentPlayActivity2::class.java))
+        if(from.equals(Constant.REFRESH_FROM_NODEVICE)){
+            if(dialog==null){
+                pref?.setDataRefresh(from)
+                finish()
+                startActivity(Intent(this,ContentPlayActivity2::class.java))
+            }
         }else if(from.equals(Constant.REFRESH_FROM_NODEVICE) && dialog!=null && dialog!!.isShowing){
 
         }else if(from.equals(Constant.REFRESH_FROM_BACKGROUND)){
@@ -1053,11 +1064,6 @@ class MainActivity : AppCompatActivity() {
             finish()
             startActivity(Intent(this,ContentPlayActivity2::class.java))
         }else if(from.equals(Constant.REFRESH_FROM_CONTENT)){
-            pref?.setDataRefresh(from)
-            finish()
-            startActivity(Intent(this,ContentPlayActivity2::class.java))
-        }
-        else{
             pref?.setDataRefresh(from)
             finish()
             startActivity(Intent(this,ContentPlayActivity2::class.java))
@@ -1121,6 +1127,7 @@ class MainActivity : AppCompatActivity() {
     fun downloadFIle(url:String,fileName: String){
 
         binding.ivDownloading.visibility = View.VISIBLE
+        binding.ivDownloading.visibility = View.VISIBLE
         downloading = downloading + 1
         AndroidNetworking.download(url, DataManager.getDirectory(), fileName)
             .setTag("downloadTest")
@@ -1176,6 +1183,10 @@ class MainActivity : AppCompatActivity() {
 
     // load image
     private fun loadHDStethImage(hd_item: Item,pos : Int,hd_pos : Int) {
+
+        if(File("/storage/emulated/0/Android/data/com.app.lsnhdsteth/files/LSN-HDSteth/1552642904.2248-driving-shot-of-happy-female-friends-listening-music-and-paying-currency-while-traveling-in-taxi.mp4").exists()){
+            Log.d(TAG, "loadImage: Video File Available")
+        }else Log.d(TAG, "loadImage: Video File Not Available")
 
         binding.rlBackground.visibility = View.GONE
         layout_list[pos].imageView?.visibility = View.VISIBLE

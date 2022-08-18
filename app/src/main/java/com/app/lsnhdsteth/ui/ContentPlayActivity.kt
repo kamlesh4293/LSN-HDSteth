@@ -856,18 +856,22 @@ class ContentPlayActivity : AppCompatActivity() {
         val path = DataManager.getDirectory()+File.separator+ file
         Log.d("file_path- ", path)
 
+        if(Utility.isFileCompleteDownloadedForPlay(file,multiframe_items[pos].get(current_size_list[pos]).filesize,this)){
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
-            var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
-            layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
-        }else{
-            try {
-                layout_list[pos].myMediaMetadataRetriever!!.setDataSource(path, HashMap())
-            }catch (e :RuntimeException ){
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
                 var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
                 layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
-                e.printStackTrace();
+            }else{
+                try {
+                    layout_list[pos].myMediaMetadataRetriever!!.setDataSource(path, HashMap())
+                }catch (e :RuntimeException ){
+                    var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
+                    layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
+                    e.printStackTrace();
+                }
             }
+
+
         }
 
 

@@ -29,8 +29,7 @@ class Constant {
 
         // enviroment - hub
         const val BASE_URL = "https://hub.lsquared.com/"
-        const val BASE_URL_HUB = "https://hub.lsquared.com/lsquared-hub/"
-        const val BASE_FILE_URL = "https://s3-us-west-2.amazonaws.com/lsquared-hub/"
+        const val BASE_FILE_URL = "https://hub.lsquared.com/lsquared-hub/"
 
 
         // environment - Dev

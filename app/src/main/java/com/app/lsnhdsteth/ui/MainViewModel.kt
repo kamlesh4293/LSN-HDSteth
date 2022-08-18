@@ -83,7 +83,7 @@ class MainViewModel : ViewModel() {
     // 2 fetch content data
     fun fetchContentData(){
         if(internet){
-            var url = Constant.BASE_URL_HUB+"feed/json/${device_id}.json";
+            var url = Constant.BASE_FILE_URL+"feed/json/${device_id}.json";
 //            var url = "https://dev2.lsquared.com/dev-lsquared-hub/feed/json/${device_id}.json"
             Log.d("TAG", "fetchContentData: $url")
             viewModelScope.launch(Dispatchers.IO) {
@@ -240,8 +240,9 @@ class MainViewModel : ViewModel() {
                         if(!downloable_file.contains(dir_files[i].name)){
                             val file = File(dir_files[i].path)
                             if(file.exists()){
-                                file.delete()
-                                Log.d("TAG", "deleteFiles: ${file.path}")
+                                var deleted = file.delete()
+                                if(deleted)Log.d("Main View Model", "deleteFiles: ${file.path}")
+                                else Log.d("Main View Model", "deleteFiles: Not Deleted")
                             }
                         }
                     }

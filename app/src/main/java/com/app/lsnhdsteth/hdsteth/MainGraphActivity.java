@@ -632,7 +632,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
     @Override
     public void onClick(View view) {
         initCountDownTimer();
-        if(img_adapter!=null)img_adapter.changeScroll();
+        stopSound();
         int v_month = c.get(Calendar.MONTH);
         int v_year = c.get(Calendar.YEAR);
 
@@ -669,7 +669,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                 changeCalendarAdapter();
                 break;
             case R.id.bck:
-                if (img_adapter != null) img_adapter.changeScroll();
+                stopSound();
                 if (prev_view == prev_view_report) {
                     prev_view = prev_view_calendar;
                     setReport();
@@ -774,6 +774,14 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         }
     }
 
+    private void stopSound() {
+        if(img_adapter!=null)img_adapter.changeScroll();
+        if(target_vid.getVisibility()==View.VISIBLE && target_vid.isPlaying()){
+            target_vid.stopPlayback();
+            target_vid.setVideoURI(null);
+        }
+    }
+
     private void changeCalendarAdapter() {
         if (calendarGridAdapter != null) {
             setDate();
@@ -814,7 +822,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             @Override
             public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
                 initCountDownTimer();
-                img_adapter.changeScroll();
+                stopSound();
             }
 
             @Override
@@ -1099,7 +1107,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                 @Override
                 public void onClick(View view) {
                     initCountDownTimer();
-                    if(img_adapter!=null)img_adapter.changeScroll();
+                    stopSound();
                     isPlotting = false;
                     setVisibility(false, false, false, true, false);
                     setTarget(advert);
@@ -1197,7 +1205,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                 @Override
                 public void onClick(View view) {
                     initCountDownTimer();
-                    if(img_adapter!=null)img_adapter.changeScroll();
+                    stopSound();
                     isPlotting = false;
                     setVisibility(false, false, false, true, false);
                     setTarget(advert);
@@ -1309,12 +1317,12 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
     protected void onDestroy() {
         super.onDestroy();
         if (ble_connected) connectToHDSteth.fnDisconnectDevice(context);
-        if(img_adapter!=null)img_adapter.changeScroll();
+        stopSound();
     }
 
     @Override
     public void onBackPressed() {
         super.onBackPressed();
-        if (img_adapter != null) img_adapter.changeScroll();
+        stopSound();
     }
 }

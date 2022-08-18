@@ -101,8 +101,8 @@
                         android:layout_alignParentRight="true"
                         android:layout_alignParentBottom="true"
                         android:layout_gravity="bottom"
-                        android:layout_marginRight="25dp"
-                        android:layout_marginBottom="25dp"
+                        android:layout_marginRight="30dp"
+                        android:layout_marginBottom="35dp"
                         android:src="@drawable/logo" />
 
 
