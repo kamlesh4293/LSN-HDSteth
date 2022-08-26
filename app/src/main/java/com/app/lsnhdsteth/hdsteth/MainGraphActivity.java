@@ -147,7 +147,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
     ViewPager vp_image_pager;
     SpringDotsIndicator springDotsIndicator;
     // target component
-    LinearLayout target_rl;
+    LinearLayout target_rl,progress_1l;
     ImageView target_iv;
     VideoView target_vid;
     WebView target_wv;
@@ -333,6 +333,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         vp_image_pager = findViewById(R.id.vp_image_pager);
         springDotsIndicator = findViewById(R.id.pager_indicator);
         target_rl = findViewById(R.id.rl_target);
+        progress_1l = findViewById(R.id.ll_main_graph_progress);
         target_iv = findViewById(R.id.iv_target);
         target_vid = findViewById(R.id.vv_target);
         target_wv = findViewById(R.id.wv_target);
@@ -462,7 +463,6 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         hsFormatter = new MyFadeFormatter(3200, getResources().getColor(R.color.color3));
         hsFormatter.setLegendIconEnabled(false);
 
-
         plotECG.addSeries(ecgSeries, ecgFormatter);
         plotHS.addSeries(hsSeries, hsFormatter);
         plotHS.addSeries(murSeries, murFormatter);
@@ -470,9 +470,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         XYGraphWidget widget = plotHS.getGraph();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-
             plotHS.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
-
         }
         int color = Color.TRANSPARENT;
         plotHS.getBorderPaint().setColor(color);
@@ -558,14 +556,34 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             if (!mBluetoothAdapter.isEnabled()) {
                 showBluetoothDialog();
             } else {
-
+                try {
+                    String data = pref.getStringData(MySharePrefernce.KEY_CONNECTED_DEVICE_ADDRESS);
+                    connectedDevice = new Gson().fromJson(data,BluetoothDevice.class);
+                }catch (Exception e){
+                    connectedDevice = null;
+                }
                 if (connectedDevice == null) {
                     connectToHDSteth.fnDetectDevice(context);
                 } else {
                     connectToHDSteth.fnConnectDevice(context, connectedDevice);
+                    progress_1l.setVisibility(View.VISIBLE);
+                    new Handler().postDelayed(
+                            new Runnable() {
+                                @Override
+                                public void run() {
+                                    progress_1l.setVisibility(View.GONE);
+                                    if(!ble_connected){
+                                        if (!mBluetoothAdapter.isEnabled()) {
+                                            showBluetoothDialog();
+                                        } else {
+                                            connectToHDSteth.fnDetectDevice(context);
+                                        }
+                                    }
+                                }
+                            },5000
+                    );
                 }
             }
-
         }
 
 
@@ -845,18 +863,6 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         graphViewModel.fetchRecords(String.valueOf(data_obj.getDevice().get(0).getId()), selected_date);
     }
 
-    public void playAudio() {
-        try {
-            Uri uri = Uri.parse(selected_report_path + "wav.wav");
-            MediaPlayer player = new MediaPlayer();
-            player.setAudioStreamType(AudioManager.USE_DEFAULT_STREAM_TYPE);
-            player.setDataSource(this, uri);
-            player.prepare();
-            player.start();
-        } catch (Exception e) {
-            System.out.println(e.toString());
-        }
-    }
 
     public class HDStethCallBack implements HDSteth {
 
@@ -966,6 +972,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                     @Override
                     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                         initCountDownTimer();
+                        pref.putStringData(MySharePrefernce.KEY_CONNECTED_DEVICE_ADDRESS,new Gson().toJson(bluetoothDevices.get(i)));
                         connectToHDSteth.fnConnectDevice(context, bluetoothDevices.get(i));
                         connectedDevice = bluetoothDevices.get(i);
                         dialog.dismiss();

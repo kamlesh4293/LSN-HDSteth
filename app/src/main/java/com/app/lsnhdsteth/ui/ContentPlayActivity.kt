@@ -3,66 +3,72 @@ package com.app.lsnhdsteth.ui
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Dialog
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.database.Cursor
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Color
-import android.media.MediaMetadataRetriever
-import android.media.MediaPlayer.OnPreparedListener
 import android.net.Uri
-import android.os.*
-import android.provider.MediaStore
-import android.provider.Settings
-import android.text.format.DateFormat
-import android.util.DisplayMetrics
+import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
-import android.view.KeyEvent
 import android.view.View
+import kotlinx.coroutines.*
+import java.util.concurrent.TimeUnit
+import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.graphics.BitmapFactory
+import android.os.*
+import android.provider.Settings
 import android.view.Window
 import android.view.WindowManager
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.*
-import android.widget.TextView.BufferType
-import androidx.annotation.RequiresApi
-import androidx.appcompat.app.AppCompatActivity
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.app.ActivityCompat
-import androidx.core.content.FileProvider
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import com.app.lsnhdsteth.R
+import com.app.lsnhdsteth.network.Status
+import com.google.android.material.snackbar.Snackbar
+import com.google.gson.Gson
+import android.widget.TextView.BufferType
+import android.view.KeyEvent
+import com.app.lsnhdsteth.utils.*
+import android.graphics.Bitmap
+import android.graphics.Color
+import java.io.*
+import android.widget.RelativeLayout
 import com.androidnetworking.AndroidNetworking
+import eu.bolt.screenshotty.Screenshot
+import eu.bolt.screenshotty.util.ScreenshotFileSaver
+import android.media.MediaPlayer.OnPreparedListener
+import android.provider.MediaStore
+import android.database.Cursor
+import android.media.MediaMetadataRetriever
+import androidx.core.app.ActivityCompat
+import android.os.BatteryManager
+import java.util.*
+import android.webkit.WebView
+import androidx.core.content.FileProvider
+import com.app.lsnhdsteth.network.isConnected
+import org.json.JSONObject
+import android.os.Bundle
+import android.webkit.WebViewClient
 import com.androidnetworking.common.Priority
 import com.androidnetworking.error.ANError
 import com.androidnetworking.interfaces.DownloadListener
 import com.androidnetworking.interfaces.DownloadProgressListener
-import com.app.lsnhdsteth.R
+import com.app.lsnhdsteth.model.*
+import com.test.RetrofitClient
+import android.text.format.DateFormat
+import android.util.DisplayMetrics
+import androidx.annotation.RequiresApi
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.isVisible
 import com.app.lsnhdsteth.databinding.ActivityMainBinding
 import com.app.lsnhdsteth.hdsteth.MainGraphActivity
-import com.app.lsnhdsteth.model.*
-import com.app.lsnhdsteth.network.Status
-import com.app.lsnhdsteth.network.isConnected
-import com.app.lsnhdsteth.utils.*
-import com.app.lsnhdsteth.utils.Utility.Companion.showToast
-import com.google.android.material.snackbar.Snackbar
-import com.google.gson.Gson
-import com.test.RetrofitClient
-import eu.bolt.screenshotty.Screenshot
-import eu.bolt.screenshotty.util.ScreenshotFileSaver
-import kotlinx.coroutines.*
-import org.json.JSONObject
-import java.io.*
-import java.util.*
-import java.util.concurrent.TimeUnit
+import com.app.lsnhdsteth.network.NetworkConnectivity
+import java.sql.Time
+import java.text.SimpleDateFormat
 
 class ContentPlayActivity : AppCompatActivity() {
 
-    var TAG = "MultiFrameMainActivity";
+    var TAG = "Content Play Activty 2";
 
     // view list
     var layout_list : MutableList<LayoutView> = mutableListOf()
@@ -94,7 +100,7 @@ class ContentPlayActivity : AppCompatActivity() {
     private lateinit var viewModel: MainViewModel
 
     // live data
-//    lateinit var connectionLiveData: NetworkConnectivity
+    lateinit var connectionLiveData: NetworkConnectivity
 
     // for register device
     var handler: Handler = Handler()
@@ -121,6 +127,7 @@ class ContentPlayActivity : AppCompatActivity() {
     var advt = ""
     var dr_name = ""
 
+
     private val broadcastreceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             temp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10
@@ -142,7 +149,6 @@ class ContentPlayActivity : AppCompatActivity() {
         binding.rlBackground.setOnClickListener { openGraphView() }
         binding.rootLayout.setOnClickListener { openGraphView() }
         binding.mainLayout.setOnClickListener { openGraphView() }
-
     }
 
     fun openGraphView(){
@@ -151,7 +157,6 @@ class ContentPlayActivity : AppCompatActivity() {
             .putExtra("dr",dr_name)
         )
     }
-
 
     override fun onStop() {
         super.onStop()
@@ -361,9 +366,9 @@ class ContentPlayActivity : AppCompatActivity() {
         // initialize netwrok lib
         AndroidNetworking.initialize(getApplicationContext())
         // live data initiate
-//        connectionLiveData = NetworkConnectivity(application)
-//        device_id = "device2"
+        connectionLiveData = NetworkConnectivity(application)
         device_id = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+//        device_id = "91581699f87d1663"
         viewModel.internet = isConnected
         viewModel.device_id = device_id
 
@@ -398,16 +403,16 @@ class ContentPlayActivity : AppCompatActivity() {
 
     private fun initObserver() {
 
+        if(!this.isConnected)internetOffON(false)
+
         // internet observer
-/*
         connectionLiveData.observe(this, Observer { isInternet ->
             viewModel.internet = isInternet
-            if (!isInternet) showSnackBar(R.string.no_internet)
+                internetOffON(isInternet)
             if(from_internet) {
                 refreshPage(Constant.REFRESH_FROM_CHANGE_INTERNET)
             }
         })
-*/
 
 
         // device registred observer
@@ -438,7 +443,8 @@ class ContentPlayActivity : AppCompatActivity() {
         // content result observer
         viewModel.content_api_result.observe(this, Observer { response ->
             if (response.status == Status.SUCCESS) {
-                try {pref?.setLocalStorage(response.data!!)
+                try {
+                    pref?.setLocalStorage(response.data!!)
                     setJsonDatawithMultiFrame()
                 } catch (ex: Exception) {
                     Log.d(TAG, "initObserver: ${ex.toString()}")
@@ -758,14 +764,11 @@ class ContentPlayActivity : AppCompatActivity() {
     }
 
     private fun nextPlay(pos:Int){
-        var c_size = current_size_list[pos]
-        var m_size = multiframe_items.get(pos).size
 
-        Log.d(TAG, "size_TagnextPlay: type : $c_size , $m_size")
+        Log.d(TAG, "nextPlay: $pos ${SimpleDateFormat("hh:mm:ss").format(Date())}")
 
         if(current_size_list[pos] < multiframe_items.get(pos).size){
             var type = multiframe_items.get(pos)[current_size_list[pos]].type
-            Log.d(TAG, "TagnextPlay: type : $type")
 
             var file = multiframe_items[pos].get(current_size_list[pos]).fileName
             val path = DataManager.getDirectory()+File.separator+ file
@@ -785,7 +788,6 @@ class ContentPlayActivity : AppCompatActivity() {
             ) loadImage(pos)
             else if(multiframe_items.get(pos)[current_size_list[pos]].type == Constant.CONTENT_VIDEO) playVideo(pos,multiframe_items.get(pos).size,multiframe_items[pos].get(current_size_list[pos]).duration)
         }else{
-            Log.d(TAG, "TagnextPlay: type : repeat")
             current_size_list[pos] = 0
             nextPlay(pos)
         }
@@ -793,6 +795,7 @@ class ContentPlayActivity : AppCompatActivity() {
 
     // load image
     private fun loadImage(pos:Int) {
+
 
         binding.rlBackground.visibility = View.GONE
         layout_list[pos].imageView?.visibility = View.VISIBLE
@@ -856,22 +859,18 @@ class ContentPlayActivity : AppCompatActivity() {
         val path = DataManager.getDirectory()+File.separator+ file
         Log.d("file_path- ", path)
 
-        if(Utility.isFileCompleteDownloadedForPlay(file,multiframe_items[pos].get(current_size_list[pos]).filesize,this)){
 
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
+            var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
+            layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
+        }else{
+            try {
+                layout_list[pos].myMediaMetadataRetriever!!.setDataSource(path, HashMap())
+            }catch (e :RuntimeException ){
                 var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
                 layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
-            }else{
-                try {
-                    layout_list[pos].myMediaMetadataRetriever!!.setDataSource(path, HashMap())
-                }catch (e :RuntimeException ){
-                    var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
-                    layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
-                    e.printStackTrace();
-                }
+                e.printStackTrace();
             }
-
-
         }
 
 
@@ -1008,7 +1007,7 @@ class ContentPlayActivity : AppCompatActivity() {
     }
 
     fun showSnackBar(msg: String) {
-        Snackbar.make(findViewById<View>(android.R.id.content), msg, Snackbar.LENGTH_LONG).show()
+//        Snackbar.make(findViewById<View>(android.R.id.content), msg, Snackbar.LENGTH_LONG).show()
     }
 
     fun showToast(msg: String) {
@@ -1038,24 +1037,20 @@ class ContentPlayActivity : AppCompatActivity() {
         }
     }
 
+
     fun refreshPage(from: String) {
         if(from.equals(Constant.REFRESH_FROM_CHANGE_INTERNET))pref?.putBooleanData(MySharePrefernce.KEY_REFRESH_INTERNET,false)
-        if(from.equals(Constant.REFRESH_FROM_NODEVICE) && dialog==null){
-            pref?.setDataRefresh(from)
-            finish()
-            startActivity(Intent(this,MainActivity::class.java))
-        }else if(from.equals(Constant.REFRESH_FROM_NODEVICE) && dialog!=null && dialog!!.isShowing){
-
+        if(from.equals(Constant.REFRESH_FROM_NODEVICE)){
+            if(dialog==null){
+                pref?.setDataRefresh(from)
+                finish()
+                startActivity(Intent(this,MainActivity::class.java))
+            }
         }else if(from.equals(Constant.REFRESH_FROM_BACKGROUND)){
             pref?.setDataRefresh(from)
             finish()
             startActivity(Intent(this,MainActivity::class.java))
         }else if(from.equals(Constant.REFRESH_FROM_CONTENT)){
-            pref?.setDataRefresh(from)
-            finish()
-            startActivity(Intent(this,MainActivity::class.java))
-        }
-        else{
             pref?.setDataRefresh(from)
             finish()
             startActivity(Intent(this,MainActivity::class.java))
@@ -1118,6 +1113,9 @@ class ContentPlayActivity : AppCompatActivity() {
     // downloading using network lib
     fun downloadFIle(url:String,fileName: String){
 
+        binding.ivDownloading.visibility = View.VISIBLE
+        binding.ivDownloading.visibility = View.VISIBLE
+
         downloading = downloading + 1
         AndroidNetworking.download(url, DataManager.getDirectory(), fileName)
             .setTag("downloadTest")
@@ -1128,6 +1126,9 @@ class ContentPlayActivity : AppCompatActivity() {
                 override fun onProgress(bytesDownloaded: Long, totalBytes: Long) {
                     // do anything with progress
                     Log.d("TAG", "onStart: $totalBytes/ $bytesDownloaded")
+                    if(!binding.ivDownloading.isVisible){
+                        binding.ivDownloading.visibility = View.VISIBLE
+                    }
                 }
             })
             .startDownload(object : DownloadListener {
@@ -1137,6 +1138,7 @@ class ContentPlayActivity : AppCompatActivity() {
                     downloading = downloading - 1
                     if (downloading == 0) {
                         Log.d("TAG", "all download complete: ")
+                        binding.ivDownloading.visibility = View.GONE
                         refreshPage(Constant.REFRESH_FROM_CONTENT)
                     }
                 }
@@ -1154,7 +1156,6 @@ class ContentPlayActivity : AppCompatActivity() {
         System.gc()
     }
 
-    // play HD Steth Conten
     private fun playHdStethContent(hd_item: Item,pos : Int,hd_pos : Int) {
         if(hd_item.ss != null){
             var conten_list = hd_item.ss
@@ -1162,6 +1163,7 @@ class ContentPlayActivity : AppCompatActivity() {
                 if(conten_list[hd_pos].type == Constant.CONTENT_IMAGE) loadHDStethImage(hd_item,pos,hd_pos)
                 if(conten_list[hd_pos].type == Constant.CONTENT_VIDEO) playHDStethVideo(hd_item,pos,hd_pos,conten_list[hd_pos].duration)
             }else{
+
                 current_size_list[pos] = current_size_list[pos]+1
                 nextPlay(pos)
             }
@@ -1170,6 +1172,10 @@ class ContentPlayActivity : AppCompatActivity() {
 
     // load image
     private fun loadHDStethImage(hd_item: Item,pos : Int,hd_pos : Int) {
+
+        if(File("/storage/emulated/0/Android/data/com.app.lsnhdsteth/files/LSN-HDSteth/1552642904.2248-driving-shot-of-happy-female-friends-listening-music-and-paying-currency-while-traveling-in-taxi.mp4").exists()){
+        }else Log.d(TAG, "loadImage: Video File Not Available")
+
 
         binding.rlBackground.visibility = View.GONE
         layout_list[pos].imageView?.visibility = View.VISIBLE
@@ -1221,17 +1227,18 @@ class ContentPlayActivity : AppCompatActivity() {
         val path = DataManager.getDirectory()+File.separator+ file
         Log.d("file_path- ", path)
 
-
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
-            var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
-            layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
-        }else{
-            try {
-                layout_list[pos].myMediaMetadataRetriever!!.setDataSource(path, HashMap())
-            }catch (e :RuntimeException ){
+        if(Utility.isFileCompleteDownloadedForPlay(file,hd_item.ss[hd_pos].filesize,this)){
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
                 var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
                 layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
-                e.printStackTrace();
+            }else{
+                try {
+                    layout_list[pos].myMediaMetadataRetriever!!.setDataSource(path, HashMap())
+                }catch (e :RuntimeException ){
+                    var uri = FileProvider.getUriForFile(this,packageName+".provider",File(path))
+                    layout_list[pos].myMediaMetadataRetriever!!.setDataSource(this, uri)
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -1265,6 +1272,15 @@ class ContentPlayActivity : AppCompatActivity() {
                 }
             }
         }else playHdStethContent(hd_item,pos,hd_pos+1)
+    }
+
+    fun internetOffON(internet:Boolean){
+//        if(internet)Utility.showToast(this,"Internet")
+//        else Utility.showToast(this,"No Internet")
+
+        binding.ivDownloading.visibility = View.GONE
+        if(internet)binding.ivNoInternet.visibility = View.GONE
+        else binding.ivNoInternet.visibility = View.VISIBLE
     }
 
 

@@ -63,6 +63,7 @@ import androidx.core.view.isVisible
 import com.app.lsnhdsteth.databinding.ActivityMainBinding
 import com.app.lsnhdsteth.hdsteth.MainGraphActivity
 import com.app.lsnhdsteth.network.NetworkConnectivity
+import java.text.SimpleDateFormat
 
 class MainActivity : AppCompatActivity() {
 
@@ -365,8 +366,8 @@ class MainActivity : AppCompatActivity() {
         AndroidNetworking.initialize(getApplicationContext())
         // live data initiate
         connectionLiveData = NetworkConnectivity(application)
-//        device_id = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-        device_id = "91581699f87d1663"
+        device_id = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+//        device_id = "91581699f87d1663"
         viewModel.internet = isConnected
         viewModel.device_id = device_id
 
@@ -716,7 +717,6 @@ class MainActivity : AppCompatActivity() {
                 Log.w(TAG, "setUpNavigationView", e)
             }
             CoroutineScope(Dispatchers.IO).launch {
-                var d = multiframe_items[pos][current_size_list[pos]].duration.toLong()
                 delay(TimeUnit.SECONDS.toMillis(multiframe_items[pos][current_size_list[pos]].duration.toLong()))
                 withContext(Dispatchers.Main) {
                     pref?.createReport(
@@ -764,22 +764,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun nextPlay(pos:Int){
 
-
-        var c_size = current_size_list[pos]
-        var m_size = multiframe_items.get(pos).size
-
-        Log.d(TAG, "size_TagnextPlay: type : $c_size , $m_size")
+        Log.d(TAG, "nextPlay: $pos ${SimpleDateFormat("hh:mm:ss").format(Date())}")
 
         if(current_size_list[pos] < multiframe_items.get(pos).size){
             var type = multiframe_items.get(pos)[current_size_list[pos]].type
-            Log.d(TAG, "TagnextPlay: type : $type")
-
             var file = multiframe_items[pos].get(current_size_list[pos]).fileName
             val path = DataManager.getDirectory()+File.separator+ file
-
             if(multiframe_items.get(pos)[current_size_list[pos]].type == Constant.CONTENT_HD_STETH){
                 playHdStethContent(multiframe_items[pos].get(current_size_list[pos]),pos,0)
-
             }else if(multiframe_items.get(pos)[current_size_list[pos]].type == Constant.CONTENT_WEB) showWebView(pos,multiframe_items.get(pos)[current_size_list[pos]])
             else if(!File(path).exists()){
                 current_size_list[pos] = current_size_list[pos]+1
@@ -792,7 +784,6 @@ class MainActivity : AppCompatActivity() {
             ) loadImage(pos)
             else if(multiframe_items.get(pos)[current_size_list[pos]].type == Constant.CONTENT_VIDEO) playVideo(pos,multiframe_items.get(pos).size,multiframe_items[pos].get(current_size_list[pos]).duration)
         }else{
-            Log.d(TAG, "TagnextPlay: type : repeat")
             current_size_list[pos] = 0
             nextPlay(pos)
         }
@@ -1055,18 +1046,18 @@ class MainActivity : AppCompatActivity() {
             if(dialog==null){
                 pref?.setDataRefresh(from)
                 finish()
-                startActivity(Intent(this,ContentPlayActivity2::class.java))
+                startActivity(Intent(this,ContentPlayActivity::class.java))
             }
         }else if(from.equals(Constant.REFRESH_FROM_NODEVICE) && dialog!=null && dialog!!.isShowing){
 
         }else if(from.equals(Constant.REFRESH_FROM_BACKGROUND)){
             pref?.setDataRefresh(from)
             finish()
-            startActivity(Intent(this,ContentPlayActivity2::class.java))
+            startActivity(Intent(this,ContentPlayActivity::class.java))
         }else if(from.equals(Constant.REFRESH_FROM_CONTENT)){
             pref?.setDataRefresh(from)
             finish()
-            startActivity(Intent(this,ContentPlayActivity2::class.java))
+            startActivity(Intent(this,ContentPlayActivity::class.java))
         }
     }
 
@@ -1183,10 +1174,6 @@ class MainActivity : AppCompatActivity() {
 
     // load image
     private fun loadHDStethImage(hd_item: Item,pos : Int,hd_pos : Int) {
-
-        if(File("/storage/emulated/0/Android/data/com.app.lsnhdsteth/files/LSN-HDSteth/1552642904.2248-driving-shot-of-happy-female-friends-listening-music-and-paying-currency-while-traveling-in-taxi.mp4").exists()){
-            Log.d(TAG, "loadImage: Video File Available")
-        }else Log.d(TAG, "loadImage: Video File Not Available")
 
         binding.rlBackground.visibility = View.GONE
         layout_list[pos].imageView?.visibility = View.VISIBLE

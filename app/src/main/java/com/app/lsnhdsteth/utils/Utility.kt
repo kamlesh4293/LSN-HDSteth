@@ -23,7 +23,6 @@ import com.app.lsnhdsteth.R
 import com.app.lsnhdsteth.model.Frame
 import com.app.lsnhdsteth.model.Item
 import com.devproject.miguelfagundez.awesome_toast.AwesomeToast
-import com.devproject.miguelfagundez.awesome_toast.AwesomeToast.Create
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -134,7 +133,7 @@ class Utility {
         ): JSONObject {
             val rootObject = JSONObject()
             rootObject.put("mac",mac)
-            rootObject.put("app", BuildConfig.VERSION_NAME)
+            rootObject.put("app", com.app.lsnhdsteth.BuildConfig.VERSION_NAME)
             rootObject.put("watcher","")
             rootObject.put("os",7)
             rootObject.put("client",7)

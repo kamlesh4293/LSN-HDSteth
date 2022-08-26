@@ -32,6 +32,7 @@ class MySharePrefernce(ctx: Context) {
         const val KEY_RECORD_TIME = "record_time"
         const val KEY_LANGUAGE = "lanhuage"
         const val KEY_TIME_FORMAT = "time_format"
+        const val KEY_CONNECTED_DEVICE_ADDRESS = "connected_devcice_address"
 
 
     }

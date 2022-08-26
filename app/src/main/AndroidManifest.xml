@@ -58,7 +58,7 @@
         <activity
             android:screenOrientation="landscape"
             android:configChanges="keyboardHidden|orientation|screenSize"
-            android:name=".ui.ContentPlayActivity2"/>
+            android:name=".ui.ContentPlayActivity"/>
         <activity
             android:screenOrientation="landscape"
             android:configChanges="keyboardHidden|orientation|screenSize"

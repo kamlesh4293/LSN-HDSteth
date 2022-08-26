@@ -16,6 +16,8 @@ class Constant {
     // ankit mob - d06d4e782d67ca3f
     // emu-android17 - 7f256e818ca50e01
 
+    // 8e3771365ee4892a
+
 
     companion object{
 
@@ -24,12 +26,12 @@ class Constant {
 //        const val BASE_FILE_URL = BASE_URL+"rc-lsquared-hub/"
 
         // environment - US
-//        const val BASE_URL = "https://us.lsquared.com/"
-//        const val BASE_FILE_URL = BASE_URL+"lsquared-hub/"
+        const val BASE_URL = "https://us.lsquared.com/"
+        const val BASE_FILE_URL = BASE_URL+"lsquared-hub/"
 
         // enviroment - hub
-        const val BASE_URL = "https://hub.lsquared.com/"
-        const val BASE_FILE_URL = "https://hub.lsquared.com/lsquared-hub/"
+//        const val BASE_URL = "https://hub.lsquared.com/"
+//        const val BASE_FILE_URL = "https://hub.lsquared.com/lsquared-hub/"
 
 
         // environment - Dev
@@ -60,6 +62,9 @@ class Constant {
             // target
         const val TARGET_CONTENT_CONTENT = "con"
         const val TARGET_CONTENT_URL = "url"
+
+        // api response check
+        const val DEVICE_NOT_FOUND = "device not found"
     }
 
 }

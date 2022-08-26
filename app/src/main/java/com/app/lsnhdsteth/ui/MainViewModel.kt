@@ -1,23 +1,24 @@
 package com.app.lsnhdsteth.ui
 
 import android.app.Activity
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.*
+import com.androidnetworking.AndroidNetworking
+import com.androidnetworking.common.Priority
+import com.androidnetworking.error.ANError
+import com.androidnetworking.interfaces.StringRequestListener
 import com.app.lsnhdsteth.network.ApiInterface
 import com.app.lsnhdsteth.network.ApiResponse
 import com.app.lsnhdsteth.network.Status
+import com.app.lsnhdsteth.utils.*
+import com.test.RetrofitClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import okhttp3.ResponseBody
 import org.json.JSONObject
 import retrofit2.*
-import com.androidnetworking.error.ANError
-import com.androidnetworking.AndroidNetworking
-import com.androidnetworking.common.Priority
-import com.androidnetworking.interfaces.StringRequestListener
-import com.app.lsnhdsteth.utils.*
 import java.io.File
-import com.test.RetrofitClient
-import kotlinx.coroutines.launch
 
 
 class MainViewModel : ViewModel() {
@@ -84,7 +85,6 @@ class MainViewModel : ViewModel() {
     fun fetchContentData(){
         if(internet){
             var url = Constant.BASE_FILE_URL+"feed/json/${device_id}.json";
-//            var url = "https://dev2.lsquared.com/dev-lsquared-hub/feed/json/${device_id}.json"
             Log.d("TAG", "fetchContentData: $url")
             viewModelScope.launch(Dispatchers.IO) {
                 ApiInterface.create().fetchPlayingContent(url)
@@ -256,5 +256,4 @@ class MainViewModel : ViewModel() {
             }
         }
     }
-
 }
