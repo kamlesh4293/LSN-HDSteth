@@ -1,33 +1,52 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center"
-    android:background="@color/black"
-    android:orientation="vertical">
+    android:background="@color/black">
 
-    <com.androidnetworking.widget.ANImageView
-        android:id="@+id/iv_pager_image"
+    <LinearLayout
+        android:id="@+id/ll_imgadp_progress"
+        android:gravity="center"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_gravity="center" />
+        android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/tv_play"
-        android:textStyle="bold"
-        android:textColor="@color/white"
-        android:textSize="20dp"
-        android:layout_margin="20dp"
-        android:text="Play Audio"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
 
-    <ImageView
-        android:id="@+id/iv_play"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:src="@drawable/ic_play"
-        android:layout_gravity="center" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center">
+
+        <com.androidnetworking.widget.ANImageView
+            android:id="@+id/iv_pager_image"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_gravity="center" />
+
+        <TextView
+            android:id="@+id/tv_play"
+            android:textStyle="bold"
+            android:textColor="@color/white"
+            android:textSize="20dp"
+            android:layout_margin="20dp"
+            android:text="Play Audio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <ImageView
+            android:id="@+id/iv_play"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:src="@drawable/ic_play"
+            android:layout_gravity="center" />
 
 
-</LinearLayout>
+    </LinearLayout>
+
+
+</RelativeLayout>

@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">L Squared HD Steth</string>
+
+    <string name="no_internet">No Internet Connected.</string>
+    <string name="error_title">Response Error</string>
+    <string name="error_msg">Something went wrong please try later.</string>
+
+    <string name="support_no">&lt;1-877-344-1548&gt;</string>
+
+    <string name="toast_downloading_progress">Content is downloading. Please Wait..</string>
+
 </resources>

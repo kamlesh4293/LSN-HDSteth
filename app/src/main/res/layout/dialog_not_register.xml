@@ -24,7 +24,7 @@
             android:layout_gravity="center"
             android:background="@color/dialog_color_head"
             android:padding="10dp"
-            android:text="Media Player Registration"
+            android:text="Device Registration"
             android:textColor="@color/white"
             android:textSize="16dp"
             android:textStyle="bold" />

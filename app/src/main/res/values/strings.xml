@@ -7,4 +7,6 @@
 
     <string name="support_no">&lt;1-877-344-1548&gt;</string>
 
+    <string name="toast_downloading_progress">Content downloading. Please Wait...</string>
+
 </resources>

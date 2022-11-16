@@ -1,6 +1,7 @@
 package com.app.lsnhdsteth.ui.calendar
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -45,6 +46,8 @@ class UtilCalendar {
         fun getFirstDay(year : Int,month: Int):String{
             var mon = (month+1).toString()
             if(mon.length==1) mon = "0$mon"
+            var date = "01-$mon-$year"
+            Log.d("TAG", "getFirstDay: Date - $date")
             val l = LocalDate.parse("01-$mon-$year", DateTimeFormatter.ofPattern("dd-MM-yyyy"))
             return l.dayOfWeek.toString()
         }

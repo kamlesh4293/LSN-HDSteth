@@ -88,6 +88,16 @@
                 app:tint="@color/white" />
 
             <ImageView
+                android:id="@+id/iv_stethoscope"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:background="?selectableItemBackground"
+                android:clickable="true"
+                android:padding="10dp"
+                android:src="@drawable/ic_stethoscope"
+                app:tint="@color/white" />
+
+            <ImageView
                 android:id="@+id/recrd"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
@@ -142,39 +152,72 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <com.androidplot.xy.XYPlot
-                android:id="@+id/plot1"
-                style="@style/FullScreenGraph"
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1"
-                app:domainLineColor="@android:color/transparent"
-                app:domainOriginLineColor="@android:color/transparent"
-                app:rangeLineColor="@android:color/transparent"
-                app:rangeOriginLineColor="@android:color/transparent" />
+                android:layout_weight="1">
 
 
-            <com.androidplot.xy.XYPlot
-                android:id="@+id/plot2"
-                style="@style/FullScreenGraph"
+                <com.androidplot.xy.XYPlot
+                    android:id="@+id/plot1"
+                    style="@style/FullScreenGraph"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:domainLineColor="@android:color/transparent"
+                    app:domainOriginLineColor="@android:color/transparent"
+                    app:rangeLineColor="@android:color/transparent"
+                    app:rangeOriginLineColor="@android:color/transparent" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="8dp"
+                    android:text="PCG"
+                    android:textAppearance="?android:textAppearanceMedium"
+                    android:textColor="@color/black"
+                    android:textStyle="bold" />
+
+            </FrameLayout>
+
+
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1"
-                app:domainLineColor="@android:color/transparent"
-                app:domainOriginLineColor="@android:color/transparent"
-                app:rangeLineColor="@android:color/transparent"
-                app:rangeOriginLineColor="@android:color/transparent"
-                app:titleTextSize="12dp" />
+                android:layout_weight="1">
+
+                <com.androidplot.xy.XYPlot
+                    android:id="@+id/plot2"
+                    style="@style/FullScreenGraph"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:domainLineColor="@android:color/transparent"
+                    app:domainOriginLineColor="@android:color/transparent"
+                    app:rangeLineColor="@android:color/transparent"
+                    app:rangeOriginLineColor="@android:color/transparent"
+                    app:titleTextSize="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="8dp"
+                    android:text="ECG"
+                    android:textAppearance="?android:textAppearanceMedium"
+                    android:textColor="@color/black"
+                    android:textStyle="bold" />
+
+            </FrameLayout>
+
+
         </LinearLayout>
 
 
         <LinearLayout
+            android:visibility="gone"
             android:id="@+id/ll_calendr_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="horizontal"
-            android:padding="1dp"
-            android:visibility="gone">
+            android:padding="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -226,27 +269,46 @@
 
                 <TextView
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="50dp"
                     android:background="#F5F5F5"
                     android:fontFamily="@font/robotocondensed_bold"
-                    android:paddingHorizontal="20dp"
+                    android:gravity="center_vertical"
                     android:paddingVertical="5dp"
+                    android:paddingHorizontal="20dp"
+                    android:textSize="18dp"
                     android:text="Available Auscultation"
                     android:textColor="@color/black" />
 
                 <TextView
+                    android:visibility="gone"
                     android:id="@+id/tv_no_records"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
                     android:gravity="center"
-                    android:text="No Records"
-                    android:visibility="gone" />
+                    android:layout_height="match_parent"
+                    android:text="No Records"/>
 
                 <androidx.recyclerview.widget.RecyclerView
+                    android:layout_marginTop="10dp"
                     android:id="@+id/rv_calendar"
                     android:layout_width="match_parent"
+                    android:visibility="gone"
                     android:layout_height="0dp"
                     android:layout_weight="1" />
+
+                <LinearLayout
+                    android:visibility="gone"
+                    android:gravity="center"
+                    android:id="@+id/cal_record_progress"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <ProgressBar
+                        android:layout_gravity="center"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+
+
+                </LinearLayout>
 
 
             </LinearLayout>
@@ -355,11 +417,19 @@
             android:scaleType="fitXY"
             android:src="@drawable/bottom_ad" />
 
-        <VideoView
-            android:id="@+id/bottom_ad_video"
+        <LinearLayout
+            android:visibility="gone"
+            android:id="@+id/ll_ad_video"
+            android:gravity="center"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
+            android:layout_height="match_parent">
+
+            <VideoView
+                android:id="@+id/bottom_ad_video"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
 
     </RelativeLayout>
 

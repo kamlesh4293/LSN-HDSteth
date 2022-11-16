@@ -2,6 +2,7 @@ package com.app.lsnhdsteth.utils
 
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import com.app.lsnhdsteth.model.Downloadable
 import java.io.*
 import java.util.zip.ZipEntry
@@ -15,6 +16,7 @@ class DataManager {
         val APP_DIRECTORY =  "LSN-HDSteth"
         val APP_SDSTETH_DIRECTORY =  "HDSteth"
         val APP_SCREEN_DIRECTORY =  APP_DIRECTORY+"/Screen"
+        val APP_REPORT_DIRECTORY =  APP_DIRECTORY+"/Report"
 
         @JvmStatic
         fun getDirectory():String?{
@@ -25,6 +27,16 @@ class DataManager {
         fun getScreenShotDirectory():String?{
             var file = MyApplication.applicationContext().getExternalFilesDir(APP_SCREEN_DIRECTORY)
             return file?.absolutePath
+        }
+
+        fun getReportDirectory():String?{
+            var file = MyApplication.applicationContext().getExternalFilesDir(APP_REPORT_DIRECTORY)
+            return file?.absolutePath
+        }
+
+        fun getReportFileList():Array<File> {
+            var file = MyApplication.applicationContext().getExternalFilesDir(APP_REPORT_DIRECTORY)
+            return file?.listFiles()!!
         }
 
 
@@ -60,6 +72,22 @@ class DataManager {
         @JvmStatic
         fun zipFolder(toZipFolder: File): File? {
             val ZipFile = File(toZipFolder.parent, String.format("%s.zip", toZipFolder.name))
+//            val ZipFile = File(toZipFolder.parent, String.format("%s.zip", Utility.getOfflineZipFileName()))
+            return try {
+                val out = ZipOutputStream(FileOutputStream(ZipFile))
+                zipSubFolder(out, toZipFolder, toZipFolder.path.length)
+                out.close()
+                ZipFile
+            } catch (ex: Exception) {
+                ex.printStackTrace()
+                null
+            }
+        }
+
+        @JvmStatic
+        fun zipFolderOffline(toZipFolder: File): File? {
+//            val ZipFile = File(toZipFolder.parent, String.format("%s.zip", toZipFolder.name))
+            val ZipFile = File(toZipFolder.parent, String.format("%s.zip", Utility.getOfflineZipFileName()))
             return try {
                 val out = ZipOutputStream(FileOutputStream(ZipFile))
                 zipSubFolder(out, toZipFolder, toZipFolder.path.length)
@@ -99,9 +127,25 @@ class DataManager {
             }
         }
 
-
+        // create file for saved data
+        fun createReportFile(pref: MySharePrefernce?) {
+            var data = pref?.getStoreReportdata()
+            if(!data.equals("")){
+                var filename = System.currentTimeMillis().toString()+".csv"
+                try {
+                    val gpxfile = File(getReportDirectory(), filename)
+                    val writer = FileWriter(gpxfile)
+                    writer.append(data.toString().trim())
+                    writer.flush()
+                    writer.close()
+                    pref?.clearReportdata()
+                } catch (e: Exception) {
+                }
+            }else{
+                Log.d("TAG", "ReportFile: No data For create File")
+            }
+        }
     }
-
 
 
 }

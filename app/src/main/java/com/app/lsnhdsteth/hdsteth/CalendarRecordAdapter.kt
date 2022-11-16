@@ -48,9 +48,7 @@ class CalendarRecordAdapter(
     }
 
     override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
-        if(time_format.equals("12")){
-            holder.title.text = Utility.getFormatedTime(rec!![position]?.time!!)
-        }else holder.title.text = rec!![position]?.time
+        holder.title.text = rec!![position]?.time!!
         holder.itemView.setOnClickListener({
             listener?.onItemClick(rec!![position],storage)
         });

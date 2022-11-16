@@ -2,16 +2,16 @@ package com.app.lsnhdsteth.utils
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.os.Build
+import android.os.Environment
 import android.util.Log
+import android.widget.Toast
 import com.app.lsnhdsteth.model.ResponseJsonData
 import com.google.gson.Gson
+import java.io.File
+import java.io.FileWriter
+import java.io.IOException
 import java.text.SimpleDateFormat
-import java.time.LocalDateTime
 import java.util.*
-import android.R.string
-
-
 
 
 class MySharePrefernce(ctx: Context) {
@@ -23,10 +23,16 @@ class MySharePrefernce(ctx: Context) {
         const val KEY_VERSION_API_VERSION = "device_version"
         const val KEY_CONTENT_API_VERSION = "content_version"
 
+        const val KEY_DEVICE_ID = "device_id"
+        const val KEY_MAC_ID = "mac_id"
+        const val KEY_WIDGET_ID = "widget_id"
+        const val KEY_SERVER_ID = "server_id"
+
         const val KEY_CONTENT_REFRESH = "data_refresh"
         const val KEY_SCREENSHOT_INTERVAL = "screen_shot_interval"
         const val KEY_REFRESH_INTERNET = "refresh_internet"
         const val KEY_REPORT_DATA = "report_data"
+        const val KEY_REPORT_DATA_FILENAME = "report_data_file_name"
 
         const val KEY_IDEAL_TIME = "ideal_time"
         const val KEY_RECORD_TIME = "record_time"
@@ -120,19 +126,24 @@ class MySharePrefernce(ctx: Context) {
         return pref?.getString(KEY_CONTENT_REFRESH,"")!!
     }
 
-    // submit report
-    fun storeReportdata(new_data :String){
 
-        Log.d("TAG", "storeReportdata: ${new_data.toString()}")
-        var stored_data = pref?.getString(KEY_REPORT_DATA,"")
-        if(stored_data.equals(""))editor?.putString(KEY_REPORT_DATA,new_data)
-        else {
-            var string_builder = StringBuilder()
-            string_builder.append(stored_data)
-            string_builder.append(new_data)
-            editor?.putString(KEY_REPORT_DATA,string_builder.toString())
+    // submit report
+    fun storeReportdataInFile(new_data :String){
+        try {
+//            val root = File(Environment.getExternalStorageDirectory(), "POPReports")
+            val root = DataManager.getReportDirectory()
+//            if (!root.exists())root.mkdirs()
+            val gpxfile = File(root, getStringData(KEY_REPORT_DATA_FILENAME))
+            val writer = FileWriter(gpxfile)
+            writer.append(new_data)
+            writer.flush()
+            writer.close()
+            Log.d("TAG", "storeReportdataInFile: Success")
+            Log.d("TAG", "Current File: ${getStringData(KEY_REPORT_DATA_FILENAME)}")
+//            1668074657767
+        } catch (e: IOException) {
+            e.printStackTrace()
         }
-            editor?.commit()
     }
 
     // get report data
@@ -147,28 +158,36 @@ class MySharePrefernce(ctx: Context) {
     }
 
 
+    // craete report for widgtes
     fun createReport(id:String,duration:Double){
         var report = StringBuilder()
-
-        val parts = id.split("-").toTypedArray()
-        report.append("${parts[2]},")
-
-//        var id1 = id.substring(id.lastIndexOf("-"))
-//        report.append("${id1.substring(1,id1.length)},")
-
-        report.append("${duration.toInt()}000,")
-
-        val currentDate = SimpleDateFormat("yyyy-MM-dd")
-        val currentTime = SimpleDateFormat("hh:mm:ss")
+        val parts = id.split("-").toTypedArray()          // widget id
+        val date = SimpleDateFormat("yyyy-MM-dd")
+        val time = SimpleDateFormat("hh:mm:ss")   // End Time
         val todayDate = Date()
-        val thisDate: String = currentDate.format(todayDate)
-        val thisTime: String = currentTime.format(todayDate)
-        report.append("$thisDate")
-        report.append("T$thisTime,")
-        report.append("${parts[0]},")
-        report.append("${parts[1]}\n")
+        val thisDate: String = date.format(todayDate)
+        val endTime: String = time.format(todayDate)
+        report.append("${parts[2]},")               // id
+        report.append("${duration.toInt()}000,")    // content duration
+        report.append("$thisDate")           // date
+        report.append("T$endTime,")          // end time
+        report.append("${parts[0]},")        // widget id
+        report.append("${parts[1]}\n")       // content id
         storeReportdata(report.toString())
     }
+
+    // Store report in Local Data
+    fun storeReportdata(new_data :String){
+        var stored_data = pref?.getString(KEY_REPORT_DATA,"")
+        if(stored_data.equals(""))editor?.putString(KEY_REPORT_DATA,new_data)
+        else {
+            var string_builder = StringBuilder(stored_data)
+            string_builder.append(new_data)
+            editor?.putString(KEY_REPORT_DATA,string_builder.toString())
+        }
+        editor?.commit()
+    }
+
 
     fun setLocalStorage(response: String) {
         if (response != null && !response.equals("")) {

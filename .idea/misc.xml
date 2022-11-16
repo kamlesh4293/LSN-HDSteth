@@ -20,7 +20,11 @@
         <entry key="app/src/main/res/layout/activity_main.xml" value="0.22" />
         <entry key="app/src/main/res/layout/activity_main_graph.xml" value="0.22" />
         <entry key="app/src/main/res/layout/activity_main_multifame.xml" value="0.20516304347826086" />
+        <entry key="app/src/main/res/layout/activity_main_update.xml" value="0.23333333333333334" />
         <entry key="app/src/main/res/layout/activity_main_updated.xml" value="0.22554347826086957" />
+        <entry key="app/src/main/res/layout/activity_new.xml" value="0.23020833333333332" />
+        <entry key="app/src/main/res/layout/activity_splash.xml" value="0.11195542046605876" />
+        <entry key="app/src/main/res/layout/activity_web.xml" value="0.23020833333333332" />
         <entry key="app/src/main/res/layout/calendar_date_item.xml" value="0.23333333333333334" />
         <entry key="app/src/main/res/layout/calendar_item.xml" value="0.21927083333333333" />
         <entry key="app/src/main/res/layout/calendar_record_list_item.xml" value="0.23333333333333334" />
@@ -28,6 +32,8 @@
         <entry key="app/src/main/res/layout/dialog_dialog.xml" value="0.22826086956521738" />
         <entry key="app/src/main/res/layout/dialog_no_device.xml" value="0.25" />
         <entry key="app/src/main/res/layout/dialog_not_register.xml" value="0.20516304347826086" />
+        <entry key="app/src/main/res/layout/dialog_rescanning.xml" value="0.23020833333333332" />
+        <entry key="app/src/main/res/layout/fragment_first.xml" value="0.23020833333333332" />
         <entry key="app/src/main/res/layout/layout_calendar.xml" value="0.21927083333333333" />
         <entry key="app/src/main/res/layout/pager_audio.xml" value="0.2318840579710145" />
         <entry key="app/src/main/res/layout/pager_image.xml" value="0.2318840579710145" />

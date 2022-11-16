@@ -23,7 +23,7 @@ class CalendarGridAdapter(
     private lateinit var date_tv: TextView
     private lateinit var day_tv: TextView
 
-    val days = arrayOf("MON", "TUE", "WED", "THUR", "FRI", "SAT", "SUN")
+    val days = arrayOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
 
     fun clear(new_date_list: MutableList<String>,day:String,month1: Int,sele_month1: Int){
         date_list.clear()

@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import androidx.viewpager.widget.PagerAdapter;
@@ -28,6 +29,7 @@ public class ImageAdapter extends PagerAdapter {
     String selected_report_path;
     MediaPlayer player;
     ImageView play_iv;
+    LinearLayout progress_iv;
 
     ImageAdapter(Context context,ArrayList<String> images_path,String selected_report_path){
         this.context=context;
@@ -52,7 +54,7 @@ public class ImageAdapter extends PagerAdapter {
 
     @Override
     public boolean isViewFromObject(View view, Object object) {
-        return view == ((LinearLayout) object);
+        return view == ((RelativeLayout) object);
     }
 
     @Override
@@ -60,12 +62,15 @@ public class ImageAdapter extends PagerAdapter {
         View itemView = mLayoutInflater.inflate(R.layout.pager_image, container, false);
         ANImageView imageView = itemView.findViewById(R.id.iv_pager_image);
         play_iv = itemView.findViewById(R.id.iv_play);
+        progress_iv = itemView.findViewById(R.id.ll_imgadp_progress);
         TextView play_tv = itemView.findViewById(R.id.tv_play);
         if(position == images_path.size()){
+            progress_iv.setVisibility(View.GONE);
             play_iv.setVisibility(View.VISIBLE);
             play_tv.setVisibility(View.VISIBLE);
             imageView.setVisibility(View.GONE);
         } else {
+            progress_iv.setVisibility(View.VISIBLE);
             play_iv.setVisibility(View.GONE);
             play_tv.setVisibility(View.GONE);
             imageView.setImageUrl(images_path.get(position));
@@ -112,7 +117,7 @@ public class ImageAdapter extends PagerAdapter {
 
     @Override
     public void destroyItem(ViewGroup container, int position, Object object) {
-        container.removeView((LinearLayout)object);
+        container.removeView((RelativeLayout)object);
     }
 
 }

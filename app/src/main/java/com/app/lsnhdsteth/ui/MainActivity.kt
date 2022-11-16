@@ -3,82 +3,88 @@ package com.app.lsnhdsteth.ui
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Dialog
-import android.content.Context
-import android.content.pm.PackageManager
-import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
-import android.util.Log
-import android.view.View
-import kotlinx.coroutines.*
-import java.util.concurrent.TimeUnit
-import android.content.Intent
 import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.media.MediaMetadataRetriever
+import android.media.MediaPlayer.OnPreparedListener
+import android.net.Uri
 import android.os.*
 import android.provider.Settings
+import android.text.format.DateFormat
+import android.util.DisplayMetrics
+import android.util.Log
+import android.util.SparseArray
+import android.view.KeyEvent
+import android.view.View
 import android.view.Window
 import android.view.WindowManager
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.*
+import android.widget.TextView.BufferType
+import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.app.ActivityCompat
+import androidx.core.content.FileProvider
+import androidx.core.view.isVisible
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import com.app.lsnhdsteth.R
-import com.app.lsnhdsteth.network.Status
-import com.google.android.material.snackbar.Snackbar
-import com.google.gson.Gson
-import android.widget.TextView.BufferType
-import android.view.KeyEvent
-import com.app.lsnhdsteth.utils.*
-import android.graphics.Bitmap
-import android.graphics.Color
-import java.io.*
-import android.widget.RelativeLayout
 import com.androidnetworking.AndroidNetworking
-import eu.bolt.screenshotty.Screenshot
-import eu.bolt.screenshotty.util.ScreenshotFileSaver
-import android.media.MediaPlayer.OnPreparedListener
-import android.provider.MediaStore
-import android.database.Cursor
-import android.media.MediaMetadataRetriever
-import androidx.core.app.ActivityCompat
-import android.os.BatteryManager
-import java.util.*
-import android.webkit.WebView
-import androidx.core.content.FileProvider
-import com.app.lsnhdsteth.network.isConnected
-import org.json.JSONObject
-import android.os.Bundle
-import android.webkit.WebViewClient
 import com.androidnetworking.common.Priority
 import com.androidnetworking.error.ANError
 import com.androidnetworking.interfaces.DownloadListener
 import com.androidnetworking.interfaces.DownloadProgressListener
-import com.app.lsnhdsteth.model.*
-import com.test.RetrofitClient
-import android.text.format.DateFormat
-import android.util.DisplayMetrics
-import androidx.annotation.RequiresApi
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.isVisible
+import com.app.lsnhdsteth.R
 import com.app.lsnhdsteth.databinding.ActivityMainBinding
 import com.app.lsnhdsteth.hdsteth.MainGraphActivity
+import com.app.lsnhdsteth.model.*
 import com.app.lsnhdsteth.network.NetworkConnectivity
+import com.app.lsnhdsteth.network.Status
+import com.app.lsnhdsteth.network.isConnected
+import com.app.lsnhdsteth.ui.newui.NewActivity
+import com.app.lsnhdsteth.utils.Constant
+import com.app.lsnhdsteth.utils.DataManager
+import com.app.lsnhdsteth.utils.MySharePrefernce
+import com.app.lsnhdsteth.utils.Utility
+import com.google.android.material.snackbar.Snackbar
+import com.google.gson.Gson
+import com.test.RetrofitClient
+import eu.bolt.screenshotty.Screenshot
+import eu.bolt.screenshotty.util.ScreenshotFileSaver
+import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers.IO
+import org.json.JSONObject
+import java.io.File
+import java.io.FileNotFoundException
+import java.io.FileOutputStream
+import java.io.IOException
 import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
     var TAG = "MultiFrameMainActivity";
 
+    private val viewClickTimeStampSparseArray = SparseArray<Long>()
+
+
     // view list
     var layout_list : MutableList<LayoutView> = mutableListOf()
     var screen_layout_list : MutableList<LayoutView> = mutableListOf()
+    var downloading_list : MutableList<String> = mutableListOf()
 
     //    var items: List<Item>? = null
     var multiframe_items: MutableList<MutableList<Item>> = mutableListOf()
     var items: MutableList<Item> = mutableListOf()
-
-
-    var item_size = 0
+    var hdsteth_ss_size = 0
 
     var current_size_list : MutableList<Int> = mutableListOf()
     var device_id = ""
@@ -126,6 +132,13 @@ class MainActivity : AppCompatActivity() {
     var advt = ""
     var dr_name = ""
 
+    // count duration for not complete item
+    var pre_id = ""
+    var pre_duration = 0
+
+    // list jobs
+    var list = mutableListOf<Job>()
+
 
     private val broadcastreceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -136,6 +149,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         from_background = false
         initXml()
         initObserver()
@@ -145,33 +159,59 @@ class MainActivity : AppCompatActivity() {
         var intentfilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         registerReceiver(broadcastreceiver,intentfilter)
 
-        binding.rlBackground.setOnClickListener { openGraphView() }
-        binding.rootLayout.setOnClickListener { openGraphView() }
-        binding.mainLayout.setOnClickListener { openGraphView() }
+        binding.rlBackground.setOnClickListener {openGraphView(binding.rlBackground) }
+        binding.rootLayout.setOnClickListener {openGraphView(binding.rootLayout) }
+        binding.mainLayout.setOnClickListener {openGraphView(binding.mainLayout) }
     }
 
-    fun openGraphView(){
-        if(frame_clickable)startActivity(Intent(this,MainGraphActivity::class.java)
-            .putExtra("advt",advt)
-            .putExtra("dr",dr_name)
-        )
+    fun openGraphView(view: View) {
+        if(!isTooEarlyMultipleClicks(view,5000)){
+            if(frame_clickable){
+                if(downloading_list.size==0 || !isConnected){
+                    if(pre_duration!=0) pref?.createReport(pre_id,pre_duration.toDouble())
+                    startActivity(Intent(this,MainGraphActivity::class.java)
+                        .putExtra("advt",advt)
+                        .putExtra("dr",dr_name))
+                }else{
+                    Utility.showToast(this,resources.getString(R.string.toast_downloading_progress))
+                }
+            }
+        }
     }
 
     override fun onStop() {
         super.onStop()
         from_background = true
+        Log.d(TAG, "onStop: all jobs before - ${list.size}")
+        if(list!=null && list.size>0){
+            for(i in list){
+                i.cancel()
+            }
+            list = mutableListOf()
+        }
+        Log.d(TAG, "onStop: all jobs after - ${list.size}")
     }
 
     override fun onResume() {
         super.onResume()
+        // create report and store
+//        DataManager.createReportFile(pref,device_id)
+
         Handler().postDelayed({ from_internet = true }, 2000)
         if(from_background){
             refreshPage(Constant.REFRESH_FROM_BACKGROUND)
         }
 
+        // submit Reports
+        handler.postDelayed(Runnable {
+//            viewModel.submitRecords(device_id,pref?.getStoreReportdata()!!,pref)
+            viewModel.submitRecordsFile(device_id,this)
+        }.also { runnable = it }, viewModel.report_delay.toLong())
+
         // is device registered
         handler.postDelayed(Runnable {
             handler.postDelayed(runnable!!, viewModel.delay.toLong())
+            Log.d(TAG, "onResume: Version check")
             checkDeviceVersion()
         }.also { runnable = it }, viewModel.delay.toLong())
 
@@ -192,52 +232,56 @@ class MainActivity : AppCompatActivity() {
             var response = pref?.getJsonData()
             if(response != null && response != ""){
                 var data_obj = Gson().fromJson(response, ResponseJsonData::class.java)
-                if(data_obj.device[0].screenshotUpload.equals("On") && screen_layout_list != null && screen_layout_list.size>0) {
-                    var screen_img_list = mutableListOf<String>()
+                if(data_obj.device[0].screenshotUpload.equals("Off") && !data_obj.device[0].screenshotUpdate){
 
-                    for(i in 0..screen_layout_list.size-1){
-                        var layout = layout_list[i]
-                        if(layout.imageView?.visibility == View.GONE &&
-                            layout.videoView?.visibility == View.GONE &&
-                            layout.webView?.visibility == View.GONE ) continue
-                        if(layout_list[i].videoView?.visibility == View.VISIBLE){
-                            val currentPosition: Int? = layout_list[i].videoView?.getCurrentPosition() //in millisecond
-                            val pos = currentPosition?.times(1000) //unit in microsecond
-                            val bmFrame = layout_list[i].myMediaMetadataRetriever?.getFrameAtTime(pos!!.toLong())
-                            screen_layout_list[i].imageView?.setImageBitmap(bmFrame)
-                            continue
-                        }
-                        var file = screenshot(layout_list[i].relative_layout!!,"Screen_$i"+Utility.getCurrentdate())
-                        val options = BitmapFactory.Options()
-                        options.inSampleSize = 1
-                        options.inPreferredConfig = Bitmap.Config.ARGB_8888
-                        options.inJustDecodeBounds = false
-                        screen_layout_list[i].imageView?.setImageBitmap(BitmapFactory.decodeFile(file?.absolutePath,options))
-                        screen_img_list.add(file?.absolutePath.toString())
-                    }
-                    binding.screenRootLayout.visibility = View.VISIBLE
-                    Handler().postDelayed(
-                        Runnable {
-                            var file = screenshot(binding.screenRootLayout,"Screen_final_"+Utility.getCurrentdate())
+                }else{
+                    if(screen_layout_list != null && screen_layout_list.size>0) {
+                        var screen_img_list = mutableListOf<String>()
+
+                        for(i in 0..screen_layout_list.size-1){
+                            var layout = layout_list[i]
+                            if(layout.imageView?.visibility == View.GONE &&
+                                layout.videoView?.visibility == View.GONE &&
+                                layout.webView?.visibility == View.GONE ) continue
+                            if(layout_list[i].videoView?.visibility == View.VISIBLE){
+                                val currentPosition: Int? = layout_list[i].videoView?.getCurrentPosition() //in millisecond
+                                val pos = currentPosition?.times(1000) //unit in microsecond
+                                val bmFrame = layout_list[i].myMediaMetadataRetriever?.getFrameAtTime(pos!!.toLong())
+                                screen_layout_list[i].imageView?.setImageBitmap(bmFrame)
+                                continue
+                            }
+                            var file = screenshot(layout_list[i].relative_layout!!,"Screen_$i"+Utility.getCurrentdate())
+                            val options = BitmapFactory.Options()
+                            options.inSampleSize = 1
+                            options.inPreferredConfig = Bitmap.Config.ARGB_8888
+                            options.inJustDecodeBounds = false
+                            screen_layout_list[i].imageView?.setImageBitmap(BitmapFactory.decodeFile(file?.absolutePath,options))
                             screen_img_list.add(file?.absolutePath.toString())
-                            if(file != null){
-                                viewModel.submitScreenShot(Utility.getScreenshotJson(device_id,Utility.getFileToByte(file.absolutePath)))
-                                if(screen_img_list!=null && screen_img_list?.size>0){
-                                    for (i in 0..screen_img_list.size-1){
-                                        if(File(screen_img_list[i]).exists())File(screen_img_list[i]).delete()
+                        }
+                        binding.screenRootLayout.visibility = View.VISIBLE
+                        Handler().postDelayed(
+                            Runnable {
+                                var file = screenshot(binding.screenRootLayout,"Screen_final_"+Utility.getCurrentdate())
+                                screen_img_list.add(file?.absolutePath.toString())
+                                if(file != null){
+                                    viewModel.submitScreenShot(Utility.getScreenshotJson(device_id,Utility.getFileToByte(file.absolutePath)))
+                                    if(screen_img_list!=null && screen_img_list?.size>0){
+                                        for (i in 0..screen_img_list.size-1){
+                                            if(File(screen_img_list[i]).exists())File(screen_img_list[i]).delete()
+                                        }
                                     }
                                 }
-                            }
-                            binding.screenRootLayout.visibility = View.GONE
-                        },1000
-                    )
-                }else{
-                    var file = screenshot(binding.mainLayout,"Screen_final_"+Utility.getCurrentdate())
-                    if(file != null){
-                        viewModel.submitScreenShot(Utility.getScreenshotJson(device_id,Utility.getFileToByte(file.absolutePath)))
-                        if(file.exists())file.delete()
+                                binding.screenRootLayout.visibility = View.GONE
+                            },1000
+                        )
+                    }else{
+                        var file = screenshot(binding.mainLayout,"Screen_final_"+Utility.getCurrentdate())
+                        if(file != null){
+                            viewModel.submitScreenShot(Utility.getScreenshotJson(device_id,Utility.getFileToByte(file.absolutePath)))
+                            if(file.exists())file.delete()
+                        }
+                        binding.screenRootLayout.visibility = View.GONE
                     }
-                    binding.screenRootLayout.visibility = View.GONE
                 }
             }
         }.also { screenshot_runnable = it }, viewModel.screen_delay * 100.toLong())
@@ -367,6 +411,7 @@ class MainActivity : AppCompatActivity() {
         // live data initiate
         connectionLiveData = NetworkConnectivity(application)
         device_id = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+
 //        device_id = "91581699f87d1663"
         viewModel.internet = isConnected
         viewModel.device_id = device_id
@@ -374,6 +419,7 @@ class MainActivity : AppCompatActivity() {
 
         // share preference
         pref = MySharePrefernce(this)
+        pref?.putStringData(MySharePrefernce.KEY_REPORT_DATA_FILENAME,System.currentTimeMillis().toString())
         // set screenshot interval
         if (pref?.getIntData(MySharePrefernce.KEY_SCREENSHOT_INTERVAL)!! != 0)
             viewModel.screen_delay = pref?.getIntData(MySharePrefernce.KEY_SCREENSHOT_INTERVAL)!!
@@ -402,12 +448,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun initObserver() {
 
-        if(!this.isConnected)internetOffON(false)
+        if(this.isConnected)binding.ivNoInternet.visibility = View.GONE
+        else binding.ivNoInternet.visibility = View.VISIBLE
 
         // internet observer
         connectionLiveData.observe(this, Observer { isInternet ->
             viewModel.internet = isInternet
-                internetOffON(isInternet)
+            internetOffON(isInternet)
             if(from_internet) {
                 refreshPage(Constant.REFRESH_FROM_CHANGE_INTERNET)
             }
@@ -419,10 +466,12 @@ class MainActivity : AppCompatActivity() {
             if (response.status == Status.SUCCESS) {
                 var device_obj = Gson().fromJson(response.data, ResponseCheckDeviceData::class.java)
                 if (device_obj.desc.equals("device not found")) {
+                    pref?.setDataRefresh(Constant.REFRESH_FROM_NODEVICE)
+                    viewModel.is_device_registered = false
                     refreshPage(Constant.REFRESH_FROM_NODEVICE)
                 } else {
                     viewModel.is_device_registered = true
-                    viewModel.submitRecords(device_id,pref?.getStoreReportdata()!!,pref)
+//                    viewModel.submitRecords(device_id,pref?.getStoreReportdata()!!,pref)
                     pref?.putVersionFromDeviceAPI(device_obj.desc.toInt())
                     hideDialog()
                     var device_version = pref?.getVersionOfDeviceAPI()
@@ -507,8 +556,12 @@ class MainActivity : AppCompatActivity() {
                 if (frame.get(i).item != null && frame.get(i).item.size > 0) {
                     var items_array = frame.get(i).item
                     for (j in 0..items_array.size - 1) {
-                        items.add(items_array[j])
-                        item_size = item_size + 1
+//                        items.add(items_array[j])
+                        if(items_array[j].type.equals("HDSteth")){
+                            frame_clickable =true
+                            advt = Gson().toJson(items_array[j])
+                            dr_name = items_array[j].dr
+                        }
                     }
                 }
             }
@@ -525,9 +578,24 @@ class MainActivity : AppCompatActivity() {
 
     // set json data for playing
     private fun setJsonDataForPlaying() {
+
+        if(JsonDataUtility(pref).isDeviceNotRegistered())return
+
+        items = mutableListOf()
+        var type = pref?.checkRefreshData()
+        if(type.equals(Constant.REFRESH_FROM_NODEVICE)){
+            return
+        }
+
         var response = pref?.getJsonData()
         if (response != null && !response.equals("")) {
             var data_obj = Gson().fromJson(response, ResponseJsonData::class.java)
+
+            var server_ids = data_obj.device[0].server.split("-").toTypedArray()
+            pref?.putStringData(MySharePrefernce.KEY_SERVER_ID,server_ids[0])
+            pref?.putStringData(MySharePrefernce.KEY_DEVICE_ID,data_obj.device[0].id.toString())
+            pref?.putStringData(MySharePrefernce.KEY_MAC_ID,data_obj.device[0].mac)
+
             downloable_file = data_obj.downloadable
 
             if(data_obj.layout == null) return
@@ -600,11 +668,20 @@ class MainActivity : AppCompatActivity() {
                                 var items_array = frame.get(i).item
                                 for (j in 0..items_array.size - 1) {
                                     items.add(items_array[j])
-                                    item_size = item_size + 1
                                     if(items_array[j].type.equals("HDSteth")){
+                                        val strs = items_array[j].id.split("-").toTypedArray()
+                                        pref?.putStringData(MySharePrefernce.KEY_WIDGET_ID,strs[strs.lastIndex])
+
                                         frame_clickable =true
                                         advt = Gson().toJson(items_array[j])
                                         dr_name = items_array[j].dr
+                                        if(items_array[j].ss!=null && items_array[j].ss.size>0){
+                                            hdsteth_ss_size = items_array[j].ss.size
+                                            Log.d(TAG, "setJsonDataForPlaying: item ss size -${items_array[j].ss.size}")
+                                        }else{
+                                            hdsteth_ss_size = 0
+                                            Log.d(TAG, "setJsonDataForPlaying: item ss size - 0 or null")
+                                        }
                                     }
                                 }
                             }
@@ -624,10 +701,9 @@ class MainActivity : AppCompatActivity() {
 
                         var items_array = list_frame.get(i).item
                         for (j in 0..items_array.size - 1) {
-                            items.add(items_array[j])
+//                            items.add(items_array[j])
                             items.get(items.size-1).pos = i
                             child_items.add(items_array[j])
-                            item_size = item_size + 1
                         }
                         multiframe_items?.add(child_items)
                         current_size_list.add(0)
@@ -655,6 +731,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun startDowbloading1(dataJson: ResponseJsonData) {
+
+//        if(JsonDataUtility(pref).isDeviceNotRegistered()){
+//            Log.d(TAG, "startDowbloading1: no device found")
+//            return
+//        }
+
         if(dataJson != null && dataJson.downloadable !=null && dataJson.downloadable.size>0){
             for(i in 0..dataJson.downloadable.size-1){
                 Log.d(TAG, "startDowbloading1: ${dataJson.downloadable[i]}")
@@ -673,6 +755,10 @@ class MainActivity : AppCompatActivity() {
                 if(multiframe_items.get(i) != null && multiframe_items.get(i).size>0){
                     if(current_size_list[i] < multiframe_items.get(i).size){
 
+                        pre_id = multiframe_items[i].get(current_size_list[i]).id
+                        pre_duration = 0
+                        loop()
+
                         var file = multiframe_items[i].get(current_size_list[i]).fileName
                         val path = DataManager.getDirectory()+File.separator+ file
 
@@ -682,7 +768,7 @@ class MainActivity : AppCompatActivity() {
                         else if(multiframe_items.get(i)[current_size_list[i]].type == Constant.CONTENT_WEB) showWebView(i,multiframe_items.get(i)[current_size_list[i]])
                         else if(!File(path).exists()){
                             current_size_list[i] = current_size_list[i]+1
-                            nextPlay(i)
+                            nextPlay(i,1)
                             return
                         }
                         else if(multiframe_items.get(i)[current_size_list[i]].type == Constant.CONTENT_IMAGE
@@ -716,7 +802,9 @@ class MainActivity : AppCompatActivity() {
             } catch (e: java.lang.Exception) {
                 Log.w(TAG, "setUpNavigationView", e)
             }
-            CoroutineScope(Dispatchers.IO).launch {
+
+            // for web view
+            var job = CoroutineScope(Dispatchers.IO).launch {
                 delay(TimeUnit.SECONDS.toMillis(multiframe_items[pos][current_size_list[pos]].duration.toLong()))
                 withContext(Dispatchers.Main) {
                     pref?.createReport(
@@ -724,9 +812,13 @@ class MainActivity : AppCompatActivity() {
                         multiframe_items[pos].get(current_size_list[pos]).duration
                     )
                     current_size_list[pos] = current_size_list[pos]+1
-                    nextPlay(pos)
+                    nextPlay(pos,2)
                 }
             }
+
+
+
+            list.add(job)
         }else{
             reloadWebPage(layout_list[pos].webView!!,
                 multiframe_items[pos][current_size_list[pos]].duration,
@@ -744,38 +836,46 @@ class MainActivity : AppCompatActivity() {
             Log.w(TAG, "setUpNavigationView", e)
         }
         if(interval<duration){
-            CoroutineScope(Dispatchers.IO).launch {
+            var job = CoroutineScope(Dispatchers.IO).launch {
                 delay(TimeUnit.SECONDS.toMillis(interval.toLong()))
                 withContext(Dispatchers.Main) {
                     reloadWebPage(webView,duration-interval,interval,item,pos)
                 }
             }
+            list.add(job)
         }else{
-            CoroutineScope(Dispatchers.IO).launch {
+            var job = CoroutineScope(Dispatchers.IO).launch {
                 delay(TimeUnit.SECONDS.toMillis(duration.toLong()))
                 withContext(Dispatchers.Main) {
                     pref?.createReport(item.id,item.duration)
                     current_size_list[pos] = current_size_list[pos]+1
-                    nextPlay(pos)
+                    nextPlay(pos,3)
                 }
             }
+            list.add(job)
         }
     }
 
-    private fun nextPlay(pos:Int){
+    private fun nextPlay(pos:Int,from:Int){
 
-        Log.d(TAG, "nextPlay: $pos ${SimpleDateFormat("hh:mm:ss").format(Date())}")
+        if(JsonDataUtility(pref).isDeviceNotRegistered())return
+
+        Log.d(TAG, "nextPlay: $pos ${SimpleDateFormat("hh:mm:ss").format(Date())} , type - $from")
 
         if(current_size_list[pos] < multiframe_items.get(pos).size){
             var type = multiframe_items.get(pos)[current_size_list[pos]].type
             var file = multiframe_items[pos].get(current_size_list[pos]).fileName
             val path = DataManager.getDirectory()+File.separator+ file
+
+            pre_id = multiframe_items[pos].get(current_size_list[pos]).id
+            pre_duration = 0
+
             if(multiframe_items.get(pos)[current_size_list[pos]].type == Constant.CONTENT_HD_STETH){
                 playHdStethContent(multiframe_items[pos].get(current_size_list[pos]),pos,0)
             }else if(multiframe_items.get(pos)[current_size_list[pos]].type == Constant.CONTENT_WEB) showWebView(pos,multiframe_items.get(pos)[current_size_list[pos]])
             else if(!File(path).exists()){
                 current_size_list[pos] = current_size_list[pos]+1
-                nextPlay(pos)
+                nextPlay(pos,4)
                 return
             }else if(multiframe_items.get(pos)[current_size_list[pos]].type == Constant.CONTENT_IMAGE
                 || multiframe_items.get(pos)[current_size_list[pos]].type == Constant.CONTENT_VECTOR
@@ -784,17 +884,27 @@ class MainActivity : AppCompatActivity() {
             ) loadImage(pos)
             else if(multiframe_items.get(pos)[current_size_list[pos]].type == Constant.CONTENT_VIDEO) playVideo(pos,multiframe_items.get(pos).size,multiframe_items[pos].get(current_size_list[pos]).duration)
         }else{
-            current_size_list[pos] = 0
-            nextPlay(pos)
+            var size = JsonDataUtility(pref).getItemSize()
+            var is_item = JsonDataUtility(pref).isItemHdSteth(pref)
+            var is_item_ss = JsonDataUtility(pref).isSsItemHdSteth()
+
+            Log.d(TAG, "nextPlay: size-$size, it-$is_item,iis-$is_item_ss")
+
+            if(size==1 && is_item && is_item_ss){
+                Log.d(TAG, "nextPlay: device registered")
+                current_size_list[pos] = 0
+                nextPlay(pos,5)
+            }else if(size>1){
+                Log.d(TAG, "nextPlay: device registered")
+                current_size_list[pos] = 0
+                nextPlay(pos,15)
+            }
+
         }
     }
 
     // load image
     private fun loadImage(pos:Int) {
-
-        if(File("/storage/emulated/0/Android/data/com.app.lsnhdsteth/files/LSN-HDSteth/1552642904.2248-driving-shot-of-happy-female-friends-listening-music-and-paying-currency-while-traveling-in-taxi.mp4").exists()){
-            Log.d(TAG, "loadImage: Video File Available")
-        }else Log.d(TAG, "loadImage: Video File Not Available")
 
         binding.rlBackground.visibility = View.GONE
         layout_list[pos].imageView?.visibility = View.VISIBLE
@@ -825,7 +935,8 @@ class MainActivity : AppCompatActivity() {
 //                .load(BitmapFactory.decodeFile(path,options))
 //                .into(layout_list[pos].imageView!!)
 
-            CoroutineScope(Dispatchers.IO).launch {
+            // for image
+           var job = CoroutineScope(Dispatchers.IO).launch {
                 delay(TimeUnit.SECONDS.toMillis(multiframe_items[pos][current_size_list[pos]].duration.toLong()))
                 withContext(Dispatchers.Main) {
                     pref?.createReport(
@@ -834,12 +945,14 @@ class MainActivity : AppCompatActivity() {
                     )
                     current_size_list[pos] = current_size_list[pos]+1
                     layout_list[pos].imageView?.setImageBitmap(null)
-                    nextPlay(pos)
+                    nextPlay(pos,6)
                 }
             }
+            list.add(job)
+
         }else{
             current_size_list[pos] = current_size_list[pos]+1
-            nextPlay(pos)
+            nextPlay(pos,7)
         }
     }
 
@@ -900,11 +1013,11 @@ class MainActivity : AppCompatActivity() {
             }
             // new start
             if(duration<= item.actualDuration) {
-                CoroutineScope(Dispatchers.IO).launch {
+
+                var job = CoroutineScope(Dispatchers.IO).launch {
                     var item = multiframe_items[pos][current_size_list[pos]]
                     delay((duration*1000).toLong())
                     withContext(Dispatchers.Main) {
-                        showToast("if playing")
                         pref?.createReport(
                             multiframe_items[pos].get(current_size_list[pos]).id,
                             multiframe_items[pos].get(current_size_list[pos]).duration
@@ -915,22 +1028,25 @@ class MainActivity : AppCompatActivity() {
                         }
                         mc = null
                         current_size_list[pos] = current_size_list[pos]+1
-                        nextPlay(pos)
+                        nextPlay(pos,8)
                     }
                 }
+
+
+                list.add(job)
             }else{
-                CoroutineScope(Dispatchers.IO).launch {
+                var job = CoroutineScope(Dispatchers.IO).launch {
                     var item = multiframe_items[pos][current_size_list[pos]]
                     delay((item.actualDuration*1000).toLong())
                     withContext(Dispatchers.Main) {
-                        showToast("else playing")
                         playVideo(pos,size,duration-item.actualDuration.toDouble())
                     }
                 }
+                list.add(job)
             }
         }else{
             current_size_list[pos] = current_size_list[pos]+1
-            nextPlay(pos)
+            nextPlay(pos,9)
         }
 
     }
@@ -976,8 +1092,8 @@ class MainActivity : AppCompatActivity() {
             dialog?.setContentView(R.layout.dialog_not_register)
             dialog?.findViewById<TextView>(R.id.tv_dialog_deviceid)?.text = device_id
             dialog?.findViewById<TextView>(R.id.text_dia_desc)?.text =
-                if (diagonalInches >= 6.5) "This media player is not registered to the L Squared Hub." // 6.5inch device or bigger
-                else "This media player is not registered to the \nL Squared Hub."
+                if (diagonalInches >= 6.5) "This Device is not registered to the L Squared Hub." // 6.5inch device or bigger
+                else "This Device is not registered to the \nL Squared Hub."
 
             dialog?.findViewById<TextView>(R.id.tv_dialog_detail)
                 ?.setText(Utility.getDetailsText(), BufferType.SPANNABLE)
@@ -1041,45 +1157,25 @@ class MainActivity : AppCompatActivity() {
 
 
     fun refreshPage(from: String) {
-        if(from.equals(Constant.REFRESH_FROM_CHANGE_INTERNET))pref?.putBooleanData(MySharePrefernce.KEY_REFRESH_INTERNET,false)
         if(from.equals(Constant.REFRESH_FROM_NODEVICE)){
             if(dialog==null){
                 pref?.setDataRefresh(from)
-                finish()
-                startActivity(Intent(this,ContentPlayActivity::class.java))
+                finishAffinity()
+                startActivity(Intent(this,ContentActivity::class.java))
             }
-        }else if(from.equals(Constant.REFRESH_FROM_NODEVICE) && dialog!=null && dialog!!.isShowing){
-
         }else if(from.equals(Constant.REFRESH_FROM_BACKGROUND)){
             pref?.setDataRefresh(from)
             finish()
-            startActivity(Intent(this,ContentPlayActivity::class.java))
+            startActivity(Intent(this,ContentActivity::class.java))
         }else if(from.equals(Constant.REFRESH_FROM_CONTENT)){
             pref?.setDataRefresh(from)
-            finish()
-            startActivity(Intent(this,ContentPlayActivity::class.java))
+            finishAffinity()
+            startActivity(Intent(this,ContentActivity::class.java))
+        }else if(from.equals(Constant.REFRESH_FROM_WAITING)){
+            frame_clickable = false
+            loadWaiting()
         }
     }
-
-
-    fun getFilePathToMediaID(songPath: String, context: Context): Long {
-        var id: Long = 0
-        val cr = context.contentResolver
-        val uri = MediaStore.Files.getContentUri("external")
-        val selection = MediaStore.Audio.Media.DATA
-        val selectionArgs = arrayOf(songPath)
-        val projection = arrayOf(MediaStore.Audio.Media._ID)
-        val sortOrder = MediaStore.Audio.Media.TITLE + " ASC"
-        val cursor: Cursor? = cr.query(uri, projection, "$selection=?", selectionArgs, null)
-        if (cursor != null) {
-            while (cursor.moveToNext()) {
-                val idIndex: Int = cursor.getColumnIndex(MediaStore.Audio.Media._ID)
-                id = cursor.getString(idIndex).toLong()
-            }
-        }
-        return id
-    }
-
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun hasAllFilesPermission(): Boolean {
@@ -1117,6 +1213,7 @@ class MainActivity : AppCompatActivity() {
     // downloading using network lib
     fun downloadFIle(url:String,fileName: String){
 
+        downloading_list.add(fileName)
         binding.ivDownloading.visibility = View.VISIBLE
         binding.ivDownloading.visibility = View.VISIBLE
         downloading = downloading + 1
@@ -1138,6 +1235,7 @@ class MainActivity : AppCompatActivity() {
                 override fun onDownloadComplete() {
                     // do anything after completion
                     Log.d("TAG", "onSuccess: ")
+                    downloading_list.remove(fileName)
                     downloading = downloading - 1
                     if (downloading == 0) {
                         Log.d("TAG", "all download complete: ")
@@ -1162,18 +1260,24 @@ class MainActivity : AppCompatActivity() {
     private fun playHdStethContent(hd_item: Item,pos : Int,hd_pos : Int) {
         if(hd_item.ss != null){
             var conten_list = hd_item.ss
+//            if(hd_item.ss[hd_pos].fileName)
             if(conten_list.size > hd_pos){
+                pre_id = hd_item.ss[hd_pos].id
+                pre_duration = 0
+
                 if(conten_list[hd_pos].type == Constant.CONTENT_IMAGE) loadHDStethImage(hd_item,pos,hd_pos)
-                if(conten_list[hd_pos].type == Constant.CONTENT_VIDEO) playHDStethVideo(hd_item,pos,hd_pos,conten_list[hd_pos].duration)
+                if(conten_list[hd_pos].type == Constant.CONTENT_VIDEO) playHDStethVideo(hd_item,pos,hd_pos,conten_list[hd_pos].d,conten_list[hd_pos].fd)
             }else{
                 current_size_list[pos] = current_size_list[pos]+1
-                nextPlay(pos)
+                nextPlay(pos,10)
             }
         }
     }
 
     // load image
     private fun loadHDStethImage(hd_item: Item,pos : Int,hd_pos : Int) {
+
+        Log.d(TAG, "loadHDStethImage: ImageLoading")
 
         binding.rlBackground.visibility = View.GONE
         layout_list[pos].imageView?.visibility = View.VISIBLE
@@ -1201,18 +1305,19 @@ class MainActivity : AppCompatActivity() {
 //                .load(BitmapFactory.decodeFile(path,options))
 //                .into(layout_list[pos].imageView!!)
 
-            CoroutineScope(Dispatchers.IO).launch {
-                delay(TimeUnit.SECONDS.toMillis(hd_item.ss[hd_pos].duration.toLong()))
+            var job = CoroutineScope(Dispatchers.IO).launch {
+                delay(TimeUnit.SECONDS.toMillis(hd_item.ss[hd_pos].d.toLong()))
                 withContext(Dispatchers.Main) {
-                    pref?.createReport(hd_item.ss[hd_pos].id,hd_item.ss[hd_pos].duration)
+                    pref?.createReport(hd_item.ss[hd_pos].id,hd_item.ss[hd_pos].d)
                     playHdStethContent(hd_item,pos,hd_pos+1)
                 }
             }
+            list.add(job)
         }else playHdStethContent(hd_item,pos,hd_pos+1)
     }
 
     // play local storage video
-    private fun playHDStethVideo(hd_item: Item,pos : Int,hd_pos : Int,duration: Double) {
+    private fun playHDStethVideo(hd_item: Item,pos : Int,hd_pos : Int,duration: Double,file_duration: Double) {
 
         binding.rlBackground.visibility = View.GONE
         layout_list[pos].imageView?.visibility = View.GONE
@@ -1224,6 +1329,7 @@ class MainActivity : AppCompatActivity() {
 
         val path = DataManager.getDirectory()+File.separator+ file
         Log.d("file_path- ", path)
+        Log.d(TAG,"file_duration-$file_duration & duration-$duration")
 
 
         if(Utility.isFileCompleteDownloadedForPlay(file,hd_item.ss[hd_pos].filesize,this)){
@@ -1241,6 +1347,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+
         if(Utility.isFileCompleteDownloadedForPlay(file,hd_item.ss[hd_pos].filesize,this)){
             Log.d("file_path_exist- ", path)
             layout_list[pos].videoView?.setVideoPath(path)
@@ -1248,38 +1355,106 @@ class MainActivity : AppCompatActivity() {
             layout_list[pos].imageView?.visibility = View.GONE
             layout_list[pos].videoView?.visibility = View.VISIBLE
 
-
             var mc : MediaController? = MediaController(this)
             mc?.visibility = View.GONE
             layout_list[pos].videoView?.setMediaController(mc)
             // new start
-            CoroutineScope(Dispatchers.IO).launch {
-                delay((duration*1000).toLong())
-                withContext(Dispatchers.Main) {
-                    showToast("if playing")
-                    pref?.createReport(
-                        hd_item.ss[hd_pos].id,
-                        hd_item.ss[hd_pos].duration
-                    )
-                    if(layout_list[pos].videoView?.isPlaying == true){
-                        layout_list[pos].videoView?.stopPlayback()
-                        layout_list[pos].videoView?.setVideoURI(null)
+
+//            layout_list[pos].videoView?.setOnCompletionListener {
+//                layout_list[pos].videoView?.stopPlayback()
+//                layout_list[pos].videoView?.setVideoPath(path)
+//                layout_list[pos].videoView?.start()
+//
+//                mc = MediaController(this)
+//                mc?.visibility = View.GONE
+//                layout_list[pos].videoView?.setMediaController(mc)
+//            }
+
+            if(file_duration==duration || file_duration>duration){
+                var job = CoroutineScope(Dispatchers.IO).launch {
+                    delay((duration*1000).toLong())
+                    withContext(Dispatchers.Main) {
+                        pref?.createReport(
+                            hd_item.ss[hd_pos].id,
+                            hd_item.ss[hd_pos].d
+                        )
+                        if(layout_list[pos].videoView?.isPlaying == true){
+                            layout_list[pos].videoView?.stopPlayback()
+                            layout_list[pos].videoView?.setVideoURI(null)
+                        }
+                        mc = null
+                        playHdStethContent(hd_item,pos,hd_pos+1)
                     }
-                    mc = null
-                    playHdStethContent(hd_item,pos,hd_pos+1)
                 }
+                list.add(job)
+            }else{
+                var job = CoroutineScope(Dispatchers.IO).launch {
+                    delay((file_duration*1000).toLong())
+                    withContext(Dispatchers.Main) {
+                        if(layout_list[pos].videoView?.isPlaying == true){
+                            layout_list[pos].videoView?.stopPlayback()
+                            layout_list[pos].videoView?.setVideoURI(null)
+                        }
+                        mc = null
+                        playHDStethVideo(hd_item,pos,hd_pos,duration-file_duration,file_duration)
+                    }
+                }
+                list.add(job)
             }
-        }else playHdStethContent(hd_item,pos,hd_pos+1)
+        }else {
+            Log.d("file_path_exist- ", "Not")
+            playHdStethContent(hd_item,pos,hd_pos+1)
+        }
     }
 
     fun internetOffON(internet:Boolean){
-//        if(internet)Utility.showToast(this,"Internet")
-//        else Utility.showToast(this,"No Internet")
-
         binding.ivDownloading.visibility = View.GONE
-        if(internet)binding.ivNoInternet.visibility = View.GONE
-        else binding.ivNoInternet.visibility = View.VISIBLE
+        if(internet){
+            binding.ivNoInternet.visibility = View.GONE
+            var response = pref?.getJsonData()
+            if(!response.equals("")){
+                var data_obj = Gson().fromJson(response, ResponseJsonData::class.java)
+                if(isConnected){
+                    if(!JsonDataUtility(pref).isDeviceNotRegistered()){
+                        startDowbloading1(data_obj)
+                    }
+                }
+            }
+        }else {
+            binding.ivNoInternet.visibility = View.VISIBLE
+            if (downloading_list.size>0){
+                for(i in 0..downloading_list.size-1){
+                    Log.d(TAG, "internetOffON: File1 ${downloading_list[i]}")
+                    var file = File(DataManager.getDirectory()+File.separator+downloading_list[i])
+                    if(file.exists()){
+                        file.delete()
+                        Log.d(TAG, "internetOffON: File1 Deleted ${downloading_list[i]}")
+                    }
+                }
+            }
+        }
     }
+
+    protected fun isTooEarlyMultipleClicks(view: View, delayMillis: Int): Boolean {
+        var delayMillis = 2000
+        val lastClickTime = viewClickTimeStampSparseArray[view.id, 0L]
+        val timeStamp = System.currentTimeMillis()
+        if (lastClickTime + delayMillis > timeStamp) {
+            return true
+        }
+        viewClickTimeStampSparseArray.put(view.id, timeStamp)
+        return false
+    }
+
+    private fun loop() {
+        var job = CoroutineScope(IO).launch {
+            delay(1000)
+            pre_duration = pre_duration+1
+            loop()
+        }
+        list.add(job)
+    }
+
 
 
 }

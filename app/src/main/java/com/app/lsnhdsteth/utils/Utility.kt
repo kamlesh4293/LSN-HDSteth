@@ -16,9 +16,10 @@ import android.text.style.StyleSpan
 import android.util.Base64
 import android.util.Log
 import android.util.Patterns
+import android.util.SparseArray
+import android.view.View
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
-import androidx.multidex.BuildConfig
 import com.app.lsnhdsteth.R
 import com.app.lsnhdsteth.model.Frame
 import com.app.lsnhdsteth.model.Item
@@ -31,6 +32,7 @@ import java.util.*
 
 
 class Utility {
+
 
     companion object{
 
@@ -96,6 +98,19 @@ class Utility {
             return false
         }
 
+        // check all permission granted
+        fun checkPermissionGranted(ctx: Context) : Boolean{
+            val pm: PackageManager = ctx.getPackageManager()
+            val hasPerm = pm.checkPermission(permission.WRITE_EXTERNAL_STORAGE,ctx.getPackageName())
+            val hasPerm1 = pm.checkPermission(permission.READ_PHONE_STATE,ctx.getPackageName())
+            if (hasPerm == PackageManager.PERMISSION_GRANTED) {
+                if (hasPerm1 == PackageManager.PERMISSION_GRANTED) {
+                    return true
+                }
+            }
+            return false
+        }
+
         // check storage permission
         fun checkStoragePermission(ctx: Context) : Boolean{
             val pm: PackageManager = ctx.getPackageManager()
@@ -153,6 +168,7 @@ class Utility {
             infoObject.put("ModelName",model_name)
             infoObject.put("ConnecteionType",connection_type)
             infoObject.put("WiFi-MAC",wifi_mac)
+            infoObject.put("AppType","HD Steth")
 
             rootObject.put("info",infoObject)
             return rootObject
@@ -172,7 +188,7 @@ class Utility {
         fun getRecords(device_id:String,report_data:String):JSONObject{
             val rootObject = JSONObject()
             rootObject.put("mac",device_id)
-            rootObject.put("data",report_data)
+            rootObject.put("data",report_data.trim())
             return rootObject
         }
 
@@ -204,10 +220,19 @@ class Utility {
             return dateFormat.format(date)+"T"+timeFormat.format(date)
         }
 
+        // get offline zipfile name
+        @JvmStatic
+        fun getOfflineZipFileName():String{
+            var dateFormat = SimpleDateFormat("yyyy-MM-dd")
+            var timeFormat = SimpleDateFormat("HH:mm:ss")
+            var date = Date()
+            return dateFormat.format(date)+"T"+timeFormat.format(date).replace(":","_")
+        }
+
         // get current date
         @JvmStatic
         fun getOnlydate():String{
-            var dateFormat = SimpleDateFormat("MMMM dd,yyyy")
+            var dateFormat = SimpleDateFormat("MMMM dd, yyyy")
             var date = Date()
             return dateFormat.format(date)
         }
@@ -217,7 +242,7 @@ class Utility {
         @JvmStatic
         fun changeDateFormat(date1 :String):String{
             val formatter = SimpleDateFormat("yyyy-MM-dd")
-            var dateFormat = SimpleDateFormat("MMMM dd,yyyy")
+            var dateFormat = SimpleDateFormat("MMMM dd, yyyy")
             var date = formatter.parse(date1)
             return dateFormat.format(date)
         }
@@ -282,6 +307,7 @@ class Utility {
             AwesomeToast.Create(ctx,msg) // Create a new AwesomeToast, you need context and message
                 .setAllRadius(5) // Corner radius (recommended between 25 to 75)
                 .setTextSize(AwesomeToast.TEXT_SMALL_SIZE) //
+                .setToastLength(3000)
                 .setBackgroundColor(ctx.resources.getColor(R.color.toast_bg))// Text Size (options available EXTRA_SMALL, SMALL, NORMAL, BIG, or DEFAULT)
                 .setBorderColor(ctx.resources.getColor(R.color.toast_bg))
                 .setTextColor(ctx.resources.getColor(R.color.black))
@@ -289,6 +315,18 @@ class Utility {
                 .show()
 
         }
+
+
+//        protected fun isTooEarlyMultipleClicks(view: View, delayMillis: Int): Boolean {
+//            val lastClickTime: Long = viewClickTimeStampSparseArray.get(view.id, 0L)
+//            val timeStamp = System.currentTimeMillis()
+//            if (lastClickTime + delayMillis > timeStamp) {
+//                return true
+//            }
+//            viewClickTimeStampSparseArray.put(view.id, timeStamp)
+//            return false
+//        }
+
 
         @JvmStatic
         fun CharSequence?.isValidEmail() = !isNullOrEmpty() && Patterns.EMAIL_ADDRESS.matcher(this).matches()
@@ -307,7 +345,7 @@ class Utility {
         @JvmStatic
         fun getFormatedTime(time:String): String {
             val inputPattern = "HH:mm:ss"
-            val outputPattern = "hh:mm:ss a"
+            val outputPattern = "hh:mm a"
             val inputFormat = SimpleDateFormat(inputPattern)
             val outputFormat = SimpleDateFormat(outputPattern, Locale.US)
             var time = inputFormat.parse(time)

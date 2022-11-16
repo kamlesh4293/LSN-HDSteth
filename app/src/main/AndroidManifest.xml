@@ -46,7 +46,7 @@
         <activity
             android:screenOrientation="landscape"
             android:configChanges="keyboardHidden|orientation|screenSize"
-            android:name=".ui.MainActivity"
+            android:name=".ui.SplashActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -58,7 +58,15 @@
         <activity
             android:screenOrientation="landscape"
             android:configChanges="keyboardHidden|orientation|screenSize"
-            android:name=".ui.ContentPlayActivity"/>
+            android:name=".ui.MainActivity"/>
+        <activity
+            android:screenOrientation="landscape"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:name=".ui.newui.NewActivity"/>
+        <activity
+            android:screenOrientation="landscape"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:name=".ui.ContentActivity"/>
         <activity
             android:screenOrientation="landscape"
             android:configChanges="keyboardHidden|orientation|screenSize"

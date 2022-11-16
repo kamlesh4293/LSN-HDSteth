@@ -1,0 +1,43 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="350dp"
+    android:layout_height="wrap_content"
+    android:background="#ffffff"
+    android:padding="15dp"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:gravity="center"
+        android:layout_margin="3dp"
+        android:padding="20dp"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/bt_dialog_resconnect"
+            android:text="Re-connect"
+            android:layout_marginRight="25dp"
+            android:paddingHorizontal="15dp"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:background="@color/bg_color"
+            android:textSize="18dp"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"/>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/bt_dialog_rescan"
+            android:text="Re-scan"
+            android:paddingHorizontal="15dp"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:background="@color/bg_color"
+            android:textSize="18dp"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp" />
+
+
+    </LinearLayout>
+
+
+</LinearLayout>

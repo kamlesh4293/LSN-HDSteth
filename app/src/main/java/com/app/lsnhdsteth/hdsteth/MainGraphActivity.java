@@ -34,6 +34,9 @@ import android.os.Handler;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.util.SparseArray;
+import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -49,6 +52,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.MediaController;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.VideoView;
@@ -117,7 +121,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
     private String[] permissionS = {Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT,
             Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
-    private ImageView bck, recrd, mail, history;
+    private ImageView bck, recrd, mail, history,stethoscope_iv;
     private BluetoothDevice connectedDevice = null;
     HDStethCallBack hdStethCallBack;
     ConnectToHDSteth connectToHDSteth;
@@ -130,15 +134,19 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
     private BluetoothAdapter mBluetoothAdapter;
     Context context;
     private boolean isPlotting = true;
+    private boolean isrecording = false;
 
     int mail_color_disable = Color.parseColor("#848282");
     int mail_color_enable = Color.parseColor("#ffffff");
     int next_color_enable = Color.parseColor("#000000");
 
+    private final SparseArray<Long> viewClickTimeStampSparseArray = new SparseArray<>();
+
 
     // customization
     ImageView bottom_iv;
     VideoView bottom_vid;
+    LinearLayout video_ll;
     TextView dr_name_tv, date_tv, time_tv, no_record_tv, calendar_date_tv, counter_tv;
     RecyclerView records_rv;
     RelativeLayout bottom_advt_rl, report_rl, root_rl;
@@ -197,9 +205,40 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
     ImageView next_month_iv;
     ImageView no_internet_iv;
     TextView selected_date_tv;
+    LinearLayout cal_progressBar;
 
-    // live data
-    NetworkConnectivity connectionLiveData;
+    String widget_id = "";
+
+    int connected = 0;
+    boolean stop = false;
+
+
+
+    private final BroadcastReceiver mBroadcastReceiver1 = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+
+            if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
+                final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+                switch(state) {
+                    case BluetoothAdapter.STATE_OFF:
+                        break;
+                    case BluetoothAdapter.STATE_TURNING_OFF:
+                        if(ble_connected && hdStethCallBack!=null){
+                            hdStethCallBack.fnDisconnected();
+                        }
+                        break;
+                    case BluetoothAdapter.STATE_ON:
+                        break;
+                    case BluetoothAdapter.STATE_TURNING_ON:
+                        break;
+                }
+
+            }
+        }
+    };
 
 
     @Override
@@ -217,8 +256,12 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             requestPermisson();
         }
         setDate();
-        calendarGridAdapter = new CalendarGridAdapter(UtilCalendar.Companion.getMonth(UtilCalendar.getFirstDay(year, month), month), String.valueOf(day), context, month, sel_month);
-        calendar_gridview.setAdapter(calendarGridAdapter);
+        try {
+            calendarGridAdapter = new CalendarGridAdapter(UtilCalendar.Companion.getMonth(UtilCalendar.getFirstDay(year, month), month), String.valueOf(day), context, month, sel_month);
+            calendar_gridview.setAdapter(calendarGridAdapter);
+        }catch (Exception ex){
+
+        }
 
         calendar_gridview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -244,10 +287,11 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         });
     }
 
+
     private void setDate() {
         if (month == sel_month)
-            selected_date_tv.setText(UtilCalendar.Companion.getMonthName(month) + " " + day + "," + year);
-        else selected_date_tv.setText(UtilCalendar.Companion.getMonthName(month) + "," + year);
+            selected_date_tv.setText(UtilCalendar.Companion.getMonthName(month) + ", "+ year);
+        else selected_date_tv.setText(UtilCalendar.Companion.getMonthName(month) + ", " + year);
     }
 
     private void initObserver() {
@@ -257,7 +301,6 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             public void onChanged(ApiResponse apiResponse) {
 //                ResponseMessage responseMessage = new Gson().fromJson(apiResponse.getData(),ResponseMessage.class);
 //                if(responseMessage.getStatus().equals("success")){
-//                    Utility.showToast(context,"Recording Saved");
 //                }
             }
         });
@@ -266,8 +309,9 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         graphViewModel.get_record_api_result().observe(this, new Observer<ApiResponse>() {
             @Override
             public void onChanged(ApiResponse apiResponse) {
-
+                initCountDownTimer();
                 isPlotting = false;
+                cal_progressBar.setVisibility(View.GONE);
 //                setVisibility(false, true, false, false, false);
 
                 if (apiResponse.getStatus() == Status.SUCCESS) {
@@ -302,10 +346,12 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         graphViewModel.get_email_api_result().observe(this, new Observer<ApiResponse>() {
             @Override
             public void onChanged(ApiResponse apiResponse) {
-                initCountDownTimer();
-                loading_ll.setVisibility(View.GONE);
-                ResponseMessage responseMessage = new Gson().fromJson(apiResponse.getData(), ResponseMessage.class);
-                Utility.showToast(context, responseMessage.getDesc());
+                if (apiResponse.getStatus() == Status.SUCCESS) {
+                    initCountDownTimer();
+                    loading_ll.setVisibility(View.GONE);
+                    ResponseMessage responseMessage = new Gson().fromJson(apiResponse.getData(), ResponseMessage.class);
+                    Utility.showToast(context, responseMessage.getDesc());
+                }
             }
         });
     }
@@ -317,6 +363,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
     private void customInitialize() {
         bottom_iv = findViewById(R.id.bottom_ad_img);
         bottom_vid = findViewById(R.id.bottom_ad_video);
+        video_ll = findViewById(R.id.ll_ad_video);
         dr_name_tv = findViewById(R.id.tv_dr_name);
         date_tv = findViewById(R.id.tv_date);
         time_tv = findViewById(R.id.tv_time);
@@ -342,6 +389,8 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         no_internet_iv = findViewById(R.id.iv_graph_no_internet);
         prev_month_iv = findViewById(R.id.iv_prev_month);
         selected_date_tv = findViewById(R.id.tv_selected_date);
+        cal_progressBar = findViewById(R.id.cal_record_progress);
+        ll_calndrVew = findViewById(R.id.ll_calendr_view);
 
         next_month_iv.setColorFilter(mail_color_disable);
 
@@ -352,7 +401,10 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         calendar_date_tv.setText(selected_date);
         playContent(0);
 
-        if (!checkNetwork()) no_internet_iv.setVisibility(View.VISIBLE);
+        if (!checkNetwork()){
+            no_internet_iv.setVisibility(View.VISIBLE);
+            no_record_tv.setVisibility(View.VISIBLE);
+        }
         NetworkConnectivity connectionLiveData = new NetworkConnectivity(getApplication());
         connectionLiveData.observe(this, internet -> {
 //            if(internet) Utility.showToast(context,"internet");
@@ -422,23 +474,18 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         }
     }
 
-    /**
-     * Checking Permission End
-     **/
-
-
     public void init() {
         bck = findViewById(R.id.bck);
         recrd = findViewById(R.id.recrd);
         mail = findViewById(R.id.mail);
         history = findViewById(R.id.history);
+        stethoscope_iv = findViewById(R.id.iv_stethoscope);
         PCG_LOWER_BOUND = 0;
         PCG_UPPER_BOUND = 64;
         ECG_LOWER_BOUND = 0;
         ECG_UPPER_BOUND = 64;
 
         llGraph = (LinearLayout) findViewById(R.id.llGraph);
-        ll_calndrVew = findViewById(R.id.ll_calendr_view);
 
         mail.setColorFilter(mail_color_disable);
 
@@ -518,9 +565,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         redrawerECG = new Redrawer(plotECG, 30, true);
         redrawerHS = new Redrawer(plotHS, 30, true);
 
-
         hdStethCallBack = new HDStethCallBack();
-
         connectToHDSteth = new ConnectToHDSteth();
         connectToHDSteth.init(context, hdStethCallBack);
 
@@ -556,33 +601,26 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             if (!mBluetoothAdapter.isEnabled()) {
                 showBluetoothDialog();
             } else {
-                try {
-                    String data = pref.getStringData(MySharePrefernce.KEY_CONNECTED_DEVICE_ADDRESS);
-                    connectedDevice = new Gson().fromJson(data,BluetoothDevice.class);
-                }catch (Exception e){
-                    connectedDevice = null;
+                String ble_address = pref.getStringData(MySharePrefernce.KEY_CONNECTED_DEVICE_ADDRESS);
+                if(!ble_address.equals("")){
+                    BluetoothDevice ble = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(ble_address);
+                    connectedDevice = ble;
+                    if(connectToHDSteth!=null){
+                        connectToHDSteth.fnConnectDevice(context,connectedDevice);
+                    }
                 }
-                if (connectedDevice == null) {
-                    connectToHDSteth.fnDetectDevice(context);
-                } else {
-                    connectToHDSteth.fnConnectDevice(context, connectedDevice);
-                    progress_1l.setVisibility(View.VISIBLE);
-                    new Handler().postDelayed(
-                            new Runnable() {
-                                @Override
-                                public void run() {
-                                    progress_1l.setVisibility(View.GONE);
-                                    if(!ble_connected){
-                                        if (!mBluetoothAdapter.isEnabled()) {
-                                            showBluetoothDialog();
-                                        } else {
-                                            connectToHDSteth.fnDetectDevice(context);
-                                        }
-                                    }
-                                }
-                            },5000
-                    );
-                }
+                new Handler().postDelayed(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                if (connectedDevice == null || !ble_connected) {
+                                    scanningDevice();
+                                }/* else {
+                                    connectToHDSteth.fnConnectDevice(context, connectedDevice);
+                                }*/
+                            }
+                        },3000
+                );
             }
         }
 
@@ -591,9 +629,13 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         recrd.setOnClickListener(this);
         mail.setOnClickListener(this);
         history.setOnClickListener(this);
+        stethoscope_iv.setOnClickListener(this);
 
         next_month_iv.setOnClickListener(this);
         prev_month_iv.setOnClickListener(this);
+
+        //upload offline report
+        uploadOfflineReports();
     }
 
     private void showBluetoothDialog() {
@@ -620,16 +662,111 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setAllCaps(false);
     }
 
-    public void initCountDownTimer() {
+    private void showScanningDilogConfirm() {
+        stopCounter();
 
-        // upload pending files due to internet
-//        File f1 = new File(getExternalFilesDir(""), "HDSteth");
-//        if(f1.isDirectory()){
-//            if(checkNetwork())
-//                if(f1.listFiles().length>0){
-//                    graphViewModel.uploadZipFile(pref,f1.listFiles()[0].getAbsolutePath(),dr_name,false);
+        AlertDialog.Builder builderSingle = new AlertDialog.Builder(MainGraphActivity.this);
+        LayoutInflater inflater = this.getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_rescanning, null);
+        builderSingle.setView(dialogView);
+        AppCompatButton rescan_bt = dialogView.findViewById(R.id.bt_dialog_rescan);
+        AppCompatButton reconnect_bt = dialogView.findViewById(R.id.bt_dialog_resconnect);
+
+        AlertDialog dialog = builderSingle.create();
+
+        rescan_bt.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                pref.putStringData(MySharePrefernce.KEY_CONNECTED_DEVICE_ADDRESS,"");
+                if(ble_connected && connectToHDSteth!=null){
+                    if(connectedDevice != null){
+                        connectedDevice = null;
+                    }
+                    connectToHDSteth.fnDisconnectDevice(context);
+                }
+                dialog.dismiss();
+                scanningDevice();
+            }
+        });
+        reconnect_bt.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(connected>0 && connectToHDSteth!=null){
+                    connectToHDSteth.fnDisconnectDevice(context);
+                }
+                dialog.dismiss();
+                reConnect();
+                initCountDownTimer();
+            }
+        });
+//        builderSingle.setMessage("Please Select ");
+//        builderSingle.setNegativeButton("Re-connect", new DialogInterface.OnClickListener() {
+//            @Override
+//            public void onClick(DialogInterface dialog, int which) {
+//                dialog.dismiss();
+//                reConnect();
+//                initCountDownTimer();
+//            }
+//        });
+//
+//        builderSingle.setPositiveButton("Re-scan", new DialogInterface.OnClickListener() {
+//            @Override
+//            public void onClick(DialogInterface dialog, int which) {
+//                pref.putStringData(MySharePrefernce.KEY_CONNECTED_DEVICE_ADDRESS,"");
+//                if(ble_connected && connectToHDSteth!=null){
+//                    if(connectedDevice != null){
+//                        connectedDevice = null;
+//                    }
+//                    connectToHDSteth.fnDisconnectDevice(context);
 //                }
-//        }
+//                scanningDevice();
+//            }
+//        });
+//        AlertDialog dialog = builderSingle.create();
+        dialog.setCancelable(true);
+        dialog.show();
+//        dialog.getButton(DialogInterface.BUTTON_POSITIVE).setAllCaps(false);
+//        dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setAllCaps(false);
+    }
+
+    public void reConnect(){
+//        if(ble_connected) return;
+//        if(ble_connected && connectToHDSteth!=null)connectToHDSteth.fnDisconnectDevice(context);
+
+        bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
+        if (bluetoothManager != null) {
+            mBluetoothAdapter = bluetoothManager.getAdapter();
+        }
+        if (!mBluetoothAdapter.isEnabled()) {
+            showBluetoothDialog();
+        } else {
+            String ble_address = pref.getStringData(MySharePrefernce.KEY_CONNECTED_DEVICE_ADDRESS);
+            if(!ble_address.equals("")){
+                BluetoothDevice ble = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(ble_address);
+                connectedDevice = ble;
+                if(connectToHDSteth!=null){
+                    connectToHDSteth.fnConnectDevice(context,connectedDevice);
+                }
+            }
+        }
+    }
+
+    public void uploadOfflineReports(){
+        // upload pending files due to internet
+        File f1 = new File(getExternalFilesDir(""), "HDSteth");
+        if(f1.isDirectory()){
+            File[] files = f1.listFiles();
+            for (int i = 0; i < files.length; i++) {
+                String file_path = files[i].getAbsolutePath();
+                String extension = file_path.substring(file_path.lastIndexOf("."));
+                if(extension.equals(".zip") && checkNetwork())
+                    graphViewModel.uploadZipFile(pref,files[i].getAbsolutePath(),dr_name,false);
+                Log.d("MainGraphActivity", "initCountDownTimer: Filename- "+files[i].getName()+" ext = "+extension);
+            }
+        }
+    }
+
+    public void initCountDownTimer() {
 
         if (yourCountDownTimer != null) yourCountDownTimer.cancel();
         yourCountDownTimer = new CountDownTimer(ideal_time * 1000, 1000) {
@@ -695,31 +832,34 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                     prev_view = -1;
                     openCalendar();
                 } else {
-                    setVisibility(true, false, false, false, false);
                     isPlotting = true;
-                    if (ble_connected) return;
+                    setVisibility(true, false, false, false, false);
 
-                    if (connectedDevice != null) {
-                        connectToHDSteth.fnConnectDevice(context, connectedDevice);
+                    if (!mBluetoothAdapter.isEnabled()) {
+                        showBluetoothDialog();
                     } else {
-                        if (!mBluetoothAdapter.isEnabled()) {
-                            showBluetoothDialog();
-                        } else {
-                            connectToHDSteth.fnDetectDevice(context);
+                        if (!ble_connected){
+                            scanningDevice();
+//                            if (connectedDevice != null) {
+//                                connectToHDSteth.fnConnectDevice(context, connectedDevice);
+//                            } else {
+//                                connectToHDSteth.fnDetectDevice(context);
+//                            }
                         }
                     }
                 }
                 break;
             case R.id.recrd:
                 stopCounter();
-                if (llGraph.getVisibility() == View.GONE) {
-                    return;
-                }
+                if (llGraph.getVisibility() == View.GONE)return;
+                if(isrecording)return;
+
                 if (!ble_connected) {
                     if (!mBluetoothAdapter.isEnabled()) {
                         showBluetoothDialog();
                     } else {
-                        connectToHDSteth.fnDetectDevice(context);
+                        scanningDevice();
+//                        connectToHDSteth.fnDetectDevice(context);
                     }
 
                     return;
@@ -743,7 +883,9 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                 Utility.showToast(context, "Recording Start");
                 stopCounter();
                 int r_time = pref.getIntData(MySharePrefernce.KEY_RECORD_TIME);
+                isrecording = true;
                 connectToHDSteth.fnRecordData(context, f1.getAbsolutePath(), r_time);
+
                 break;
 
             case R.id.mail:
@@ -759,21 +901,20 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                     Button send_bt = dialog.findViewById(R.id.bt_dia_send);
                     Button cancel_bt = dialog.findViewById(R.id.bt_dia_cancel);
                     TextView file_name = dialog.findViewById(R.id.tv_dia_file);
-                    if (format.equals("24"))
-                        file_name.setText(Utility.changeDateFormat(selected_date) + " | " + selected_report_time);
-                    else
-                        file_name.setText(Utility.changeDateFormat(selected_date) + " | " + Utility.getFormatedTime(selected_report_time));
+                    file_name.setText(Utility.changeDateFormat(selected_date) + " | " + selected_report_time);
                     send_bt.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            if (checkNetwork()) {
-                                String email = email_et.getText().toString();
-                                if (Utility.isValidEmail(email)) {
-                                    dialog.dismiss();
-                                    loading_ll.setVisibility(View.VISIBLE);
-                                    graphViewModel.sendEmail(selected_report_id, email);
-                                } else
-                                    Utility.showToast(context, "Please enter valid email address");
+                            if(!isTooEarlyMultipleClicks(v,2000)){
+                                if (checkNetwork()) {
+                                    String email = email_et.getText().toString().trim();
+                                    if (Utility.isValidEmail(email)) {
+                                        dialog.dismiss();
+                                        loading_ll.setVisibility(View.VISIBLE);
+                                        graphViewModel.sendEmail(selected_report_id, email,pref);
+                                    } else
+                                        Utility.showToast(context, "Please enter valid email address");
+                                }
                             }
                         }
                     });
@@ -789,6 +930,30 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             case R.id.history:
                 openCalendar();
                 break;
+
+            case R.id.iv_stethoscope:
+//                showScanningDilogConfirm();
+                if(llGraph.getVisibility()==View.VISIBLE){
+                    showScanningDilogConfirm();
+                }
+                break;
+        }
+    }
+
+    private void scanningDevice(){
+        try {
+            bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
+            if (bluetoothManager != null) {
+                mBluetoothAdapter = bluetoothManager.getAdapter();
+            }
+            if (!mBluetoothAdapter.isEnabled()) {
+                showBluetoothDialog();
+            }else if(llGraph.getVisibility()==View.VISIBLE){
+                connectToHDSteth.fnDetectDevice(context);
+                stopCounter();
+            }
+        }catch (Exception ex){
+            Log.d("TAG", "scanningDevice: }"+ex.toString());
         }
     }
 
@@ -807,13 +972,20 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                     , String.valueOf(day), month, sel_month);
             String response = pref.getJsonData();
             ResponseJsonData data_obj = new Gson().fromJson(response, ResponseJsonData.class);
-            if (checkNetwork()) graphViewModel.fetchRecords(String.valueOf(data_obj.getDevice().get(0).getId()), selected_date);
+            if (checkNetwork()){
+                if (month == sel_month){
+                    no_record_tv.setVisibility(View.GONE);
+                    records_rv.setVisibility(View.GONE);
+                    cal_progressBar.setVisibility(View.VISIBLE);
+                    graphViewModel.fetchRecords(String.valueOf(data_obj.getDevice().get(0).getId()), selected_date,widget_id);
+                }else no_record_tv.setVisibility(View.VISIBLE);
+            }else no_record_tv.setVisibility(View.VISIBLE);
         }
     }
 
     @Override
     public void onItemClick(@NonNull Rec rec, String storage) {
-        initCountDownTimer();
+        stopCounter();
         selected_report_id = String.valueOf(rec.getId());
         selected_report_path = storage + rec.getDir();
         selected_report_time = rec.getTime();
@@ -839,7 +1011,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         vp_image_pager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
             @Override
             public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-                initCountDownTimer();
+//                initCountDownTimer();
                 stopSound();
             }
 
@@ -857,10 +1029,15 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
 
     @SuppressLint("ResourceType")
     public void openCalendar() {
+        initCountDownTimer();
         setVisibility(false,true,false,false,false);
         String response = pref.getJsonData();
         ResponseJsonData data_obj = new Gson().fromJson(response, ResponseJsonData.class);
-        graphViewModel.fetchRecords(String.valueOf(data_obj.getDevice().get(0).getId()), selected_date);
+        if(checkNetwork()){
+            cal_progressBar.setVisibility(View.VISIBLE);
+            no_record_tv.setVisibility(View.GONE);
+            graphViewModel.fetchRecords(String.valueOf(data_obj.getDevice().get(0).getId()), selected_date,widget_id);
+        }else no_record_tv.setVisibility(View.VISIBLE);
     }
 
 
@@ -960,7 +1137,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                 rescan_tv.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        connectToHDSteth.fnDetectDevice(context);
+                        scanningDevice();
                         dialog.dismiss();
                     }
                 });
@@ -972,7 +1149,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                     @Override
                     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                         initCountDownTimer();
-                        pref.putStringData(MySharePrefernce.KEY_CONNECTED_DEVICE_ADDRESS,new Gson().toJson(bluetoothDevices.get(i)));
+                        pref.putStringData(MySharePrefernce.KEY_CONNECTED_DEVICE_ADDRESS,bluetoothDevices.get(i).getAddress());
                         connectToHDSteth.fnConnectDevice(context, bluetoothDevices.get(i));
                         connectedDevice = bluetoothDevices.get(i);
                         dialog.dismiss();
@@ -984,13 +1161,18 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         @Override
         public void fnRecordData(String[] sPaths) {
             try {
+                isrecording = false;
                 if (!sPaths[0].equals("ECG File not Saved")) {
                     String msg = sPaths[0];
-                    Log.d("fnRecordData", sPaths[0]);
+                    Log.d("fnRecordData", " fnRecordData- "+sPaths[0]);
                     initCountDownTimer();
                     Utility.showToast(context, "Recording Complete");
                     if (checkNetwork())
                         graphViewModel.uploadZipFile(pref, sPaths[0], dr_name, true);
+                    else{
+                        String file_path = new File(sPaths[0]).getParentFile().getParentFile().getAbsolutePath();
+                        File zipfile = DataManager.zipFolderOffline(new File(file_path));
+                    }
                 }
             } catch (Exception e) {
                 Log.e("ConsentMedia", e.getMessage());
@@ -1004,6 +1186,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    connected = connected-1;
                     ble_connected = false;
                     Utility.showToast(context, "HD Steth Disconnected");
                 }
@@ -1020,13 +1203,13 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    initCountDownTimer();
                     ble_connected = true;
+                    connected = connected+1;
                     Utility.showToast(context, "HD Steth Connected");
                 }
             });
         }
-
-
     }
 
 
@@ -1061,7 +1244,12 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
 
         String data = getIntent().getStringExtra("advt");
         Item item_obj = new Gson().fromJson(data, Item.class);
-        if (item_obj != null) dr_name_tv.setText("Dr. " + item_obj.getDr());
+
+        String[] parts = item_obj.getId().split("-");
+        widget_id = parts[2];
+
+        if (item_obj != null && !item_obj.getDr().equals("")) dr_name_tv.setText("Dr. " + item_obj.getDr());
+        else dr_name_tv.setText("");
         String setting = item_obj.getSettings();
         try {
             JSONObject object = new JSONObject(setting);
@@ -1076,7 +1264,7 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             e.printStackTrace();
         }
         date_tv.setText(Utility.getOnlydate());
-        if (format.equals("24")) time_tv.setText(Utility.getOnlytime().substring(0, 5));
+        if (format.equals("24")) time_tv.setText(Utility.getOnlytime().substring(0,5));
         else time_tv.setText(Utility.getFormatedTime(Utility.getOnlytime()));
         if (item_obj != null && item_obj.getAdvt() != null && item_obj.getAdvt().size() > 0) {
             if (pos < item_obj.getAdvt().size()) {
@@ -1108,16 +1296,22 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             options.inJustDecodeBounds = false;
             bottom_iv.setImageBitmap(BitmapFactory.decodeFile(path, options));
             bottom_vid.setVisibility(View.GONE);
+            video_ll.setVisibility(View.GONE);
             bottom_iv.setVisibility(View.VISIBLE);
 
             bottom_iv.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    initCountDownTimer();
-                    stopSound();
-                    isPlotting = false;
-                    setVisibility(false, false, false, true, false);
-                    setTarget(advert);
+
+                    if(!isTooEarlyMultipleClicks(view,2000)){
+                        initCountDownTimer();
+                        stopSound();
+                        isPlotting = false;
+                        setVisibility(false, false, false, true, false);
+                        setTarget(advert);
+                    }
+
+
                 }
             });
 
@@ -1125,19 +1319,31 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                     new Runnable() {
                         @Override
                         public void run() {
-                            pref.createReport(advert.getId(), advert.getDuration());
-                            bottom_iv.setImageBitmap(null);
-                            playContent(pos + 1);
+                            if(!stop){
+                                Log.d("TAG", "run: Advert content - image report");
+                                pref.createReport(advert.getId(), advert.getDuration());
+                                bottom_iv.setImageBitmap(null);
+                                playContent(pos + 1);
+                            }
                         }
                     }, (long) (advert.getDuration() * 1000)
             );
-
         } else {
             playContent(pos + 1);
         }
     }
 
     private void setTarget(Advt advert) {
+
+        String device_id = pref.getStringData(MySharePrefernce.KEY_DEVICE_ID);
+        String[] advert_ids = advert.getId().split("-");
+        if(advert.getT().get(0).getTType().equals("con")){
+            String[] target_ids = advert.getT().get(0).getId().split("-");
+            graphViewModel.sendAdvertClick(device_id,advert_ids[advert_ids.length-1],"targetId",target_ids[target_ids.length-1],pref);
+        }else{
+            graphViewModel.sendAdvertClick(device_id,advert_ids[advert_ids.length-1],"targetURL",advert.getT().get(0).getUrl(),pref);
+        }
+
         if (advert.getT().get(0).getTType().equals(Constant.TARGET_CONTENT_CONTENT)) {
             if (advert.getT().get(0).getType().equals(Constant.CONTENT_IMAGE)) {
                 String path = DataManager.getDirectory() + File.separator + advert.getT().get(0).getFileName();
@@ -1165,10 +1371,15 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
                     target_vid.setVideoPath(path);
                     target_vid.start();
 
+                    MediaController mc = new MediaController(this);
+                    mc.setVisibility(View.GONE);
+                    target_vid.setMediaController(mc);
+
+
                     target_vid.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                         @Override
                         public void onCompletion(MediaPlayer mp) {
-                            target_vid.start();
+                            mp.start();
                         }
                     });
                 }
@@ -1203,28 +1414,59 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             bottom_vid.start();
             bottom_iv.setVisibility(View.GONE);
             bottom_vid.setVisibility(View.VISIBLE);
+            video_ll.setVisibility(View.VISIBLE);
 
             MediaController mc = new MediaController(this);
             mc.setVisibility(View.GONE);
             bottom_vid.setMediaController(mc);
 
+            // video finisher
+            bottom_vid.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    mp.start();
+                }
+            });
+
+            bottom_vid.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View view, MotionEvent motionEvent) {
+                    if(!isTooEarlyMultipleClicks(view,2000)){
+                        initCountDownTimer();
+                        stopSound();
+                        isPlotting = false;
+                        setVisibility(false, false, false, true, false);
+                        setTarget(advert);
+                    }
+                    return false;
+                }
+            });
             bottom_vid.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    initCountDownTimer();
-                    stopSound();
-                    isPlotting = false;
-                    setVisibility(false, false, false, true, false);
-                    setTarget(advert);
+/*
+                    if(!isTooEarlyMultipleClicks(view,2000)){
+                        initCountDownTimer();
+                        stopSound();
+                        isPlotting = false;
+                        setVisibility(false, false, false, true, false);
+                        setTarget(advert);
+                    }
+*/
                 }
             });
             new Handler().postDelayed(
                     new Runnable() {
                         @Override
                         public void run() {
-                            if (bottom_vid.isPlaying() == true) {
-                                bottom_vid.stopPlayback();
-                                bottom_vid.setVideoURI(null);
+                            if(!stop){
+                                Log.d("TAG", "run: Advert content - video report");
+                                pref.createReport(advert.getId(), advert.getDuration());
+                                if (bottom_vid.isPlaying() == true) {
+                                    bottom_vid.stopPlayback();
+                                    bottom_vid.setVideoURI(null);
+                                }
+                                playContent(pos + 1);
                             }
                         }
                     }, (long) (advert.getDuration() * 1000)
@@ -1249,11 +1491,13 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             }
         };
         registerReceiver(_broadcastReceiver, new IntentFilter(Intent.ACTION_TIME_TICK));
+        registerReceiver(mBroadcastReceiver1, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
     }
 
     @Override
     public void onStop() {
         super.onStop();
+        stop =true;
         if (_broadcastReceiver != null)
             unregisterReceiver(_broadcastReceiver);
         finish();
@@ -1275,7 +1519,6 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             llGraph.setVisibility(View.GONE);
         }
         if (calendar){
-//            Utility.showToast(context,"change calendar");
             day = c.get(Calendar.DATE);
             month = c.get(Calendar.MONTH);
             sel_month = c.get(Calendar.MONTH);
@@ -1288,14 +1531,18 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
             String response = pref.getJsonData();
             ResponseJsonData data_obj = new Gson().fromJson(response, ResponseJsonData.class);
             selected_date = Utility.getRecordDate();
-            if (checkNetwork()) graphViewModel.fetchRecords(String.valueOf(data_obj.getDevice().get(0).getId()), selected_date);
-
+            if (checkNetwork()){
+                cal_progressBar.setVisibility(View.VISIBLE);
+                no_record_tv.setVisibility(View.GONE);
+                graphViewModel.fetchRecords(String.valueOf(data_obj.getDevice().get(0).getId()), selected_date,widget_id);
+            }
             ll_calndrVew.setVisibility(View.VISIBLE);
         }
         else ll_calndrVew.setVisibility(View.GONE);
         if (report) {
             mail.setColorFilter(mail_color_enable);
             report_rl.setVisibility(View.VISIBLE);
+            stopCounter();
         } else {
             mail.setColorFilter(mail_color_disable);
             report_rl.setVisibility(View.GONE);
@@ -1320,10 +1567,14 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         return wifiAvailable || mobileAvailable;
     }
 
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (ble_connected) connectToHDSteth.fnDisconnectDevice(context);
+        if (ble_connected){
+            if(connectedDevice!=null)connectedDevice = null;
+            connectToHDSteth.fnDisconnectDevice(context);
+        }
         stopSound();
     }
 
@@ -1332,4 +1583,19 @@ public class MainGraphActivity extends AppCompatActivity implements View.OnClick
         super.onBackPressed();
         stopSound();
     }
+
+
+    protected boolean isTooEarlyMultipleClicks(@NonNull View view, int delayMillis){
+        delayMillis = 2000;
+        long lastClickTime = viewClickTimeStampSparseArray.get(view.getId(), 0L);
+        long timeStamp = System.currentTimeMillis();
+        if(lastClickTime + delayMillis > timeStamp){
+            return true;
+        }
+        viewClickTimeStampSparseArray.put(view.getId(), timeStamp);
+        return false;
+    }
+
+
+
 }

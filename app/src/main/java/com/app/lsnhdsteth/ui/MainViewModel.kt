@@ -3,10 +3,13 @@ package com.app.lsnhdsteth.ui
 import android.app.Activity
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.*
 import com.androidnetworking.AndroidNetworking
 import com.androidnetworking.common.Priority
 import com.androidnetworking.error.ANError
+import com.androidnetworking.interfaces.JSONArrayRequestListener
+import com.androidnetworking.interfaces.JSONObjectRequestListener
 import com.androidnetworking.interfaces.StringRequestListener
 import com.app.lsnhdsteth.network.ApiInterface
 import com.app.lsnhdsteth.network.ApiResponse
@@ -16,9 +19,11 @@ import com.test.RetrofitClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okhttp3.ResponseBody
+import org.json.JSONArray
 import org.json.JSONObject
 import retrofit2.*
 import java.io.File
+import java.io.FileWriter
 
 
 class MainViewModel : ViewModel() {
@@ -32,6 +37,7 @@ class MainViewModel : ViewModel() {
     var delay = 30000
     var temp_delay = 60000
     var screen_delay = 300
+    var report_delay = 120000   // 120 seconds
 
 
     // 1. device register
@@ -81,7 +87,7 @@ class MainViewModel : ViewModel() {
     }
 
 
-    // 2 fetch content data
+    // 2 fetch content data'
     fun fetchContentData(){
         if(internet){
             var url = Constant.BASE_FILE_URL+"feed/json/${device_id}.json";
@@ -205,30 +211,34 @@ class MainViewModel : ViewModel() {
     }
 
     // 6 submit report
-    fun submitRecords(device_id: String, data: String, pref: MySharePrefernce?){
-        if(internet && is_device_registered && !data.equals("") && !is_devicereport_submitted){
-            var body = Utility.getRecords(device_id,data)
-            Log.d("record_body-",body.toString())
-            viewModelScope.launch(Dispatchers.IO) {
-                    AndroidNetworking.post(Constant.BASE_URL+"api/v1/feed/writePoPReport")
-                        .addJSONObjectBody(body) // posting json
-                        .setOkHttpClient(RetrofitClient.getOkhttpClient())
-                        .setTag("test")
-                        .setPriority(Priority.MEDIUM)
-                        .build()
-                        .getAsString(object : StringRequestListener{
-                            override fun onResponse(response: String?) {
-                                Log.d("device_report_success-",response.toString())
-                                is_devicereport_submitted = true
-                                pref?.clearReportdata()
-                            }
-                            override fun onError(anError: ANError?) {
-                                Log.d("device_report_failed-",anError.toString())
-                            }
-                        })
+    fun submitRecordsFile(device_id: String,ctx:Context){
+
+        var files  = DataManager.getReportFileList()
+        if(files!=null && files.size>0){
+            if(internet && is_device_registered){
+                AndroidNetworking.upload(Constant.BASE_URL+"api/v1/feed/writePoPReport_HDSteth")
+                    .addMultipartFile("file", files[0])
+                    .addMultipartParameter("mac", device_id)
+                    .setTag("uploadTest")
+                    .setPriority(Priority.HIGH)
+                    .build()
+                    .setUploadProgressListener { bytesUploaded, totalBytes ->}
+                    .getAsJSONObject(object :JSONObjectRequestListener{
+                        override fun onResponse(response: JSONObject?) {
+                            files[0].delete()
+                            submitRecordsFile(device_id,ctx)
+                        }
+
+                        override fun onError(anError: ANError?) {
+                            Log.d("onError", anError.toString())
+                        }
+                    })
             }
+        }else{
+            Log.d("TAG", "ReportFile: Filename - Not Available")
         }
     }
+
 
     // delete file
     fun deleteFiles(downloable_file: List<String>?) {
